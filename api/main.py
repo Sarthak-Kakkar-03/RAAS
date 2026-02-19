@@ -31,7 +31,10 @@ async def upload_file(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
 
-    out_path = RAW_DIR / file.filename
+    safe_name = Path(file.filename).name
+    if safe_name in {"", ".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    out_path = RAW_DIR / safe_name
     with out_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
