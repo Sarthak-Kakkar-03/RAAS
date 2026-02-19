@@ -35,7 +35,9 @@ async def upload_file(file: UploadFile = File(...)):
     if safe_name in {"", ".", ".."}:
         raise HTTPException(status_code=400, detail="Invalid filename")
     out_path = RAW_DIR / safe_name
-    with out_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    def _write_upload(src, dst):
+        with dst.open("wb") as f:
+            shutil.copyfileobj(src, f)
+    await run_in_threadpool(_write_upload, file.file, out_path)
 
     return {"filename": file.filename, "saved_to": str(out_path)}
