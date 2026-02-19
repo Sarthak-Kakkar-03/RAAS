@@ -64,3 +64,4 @@ Everything runs with Docker Compose.
 ```bash
 git clone https://github.com/Sarthak-Kakkar-03/RAAS.git
 cd RAAS
+```
