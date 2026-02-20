@@ -9,6 +9,10 @@ class ProjectOut(BaseModel):
     name: str
     api_key: str
 
+class ProjectPublic(BaseModel):
+    id: str
+    name: str
+
 class QueryIn(BaseModel):
     query: str
     top_k: int = 5

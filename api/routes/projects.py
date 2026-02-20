@@ -3,7 +3,7 @@ import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Header, UploadFile, File
 
-from ..models.schemas import ProjectCreate, ProjectOut, QueryIn, QueryOut
+from ..models.schemas import ProjectCreate, ProjectOut, ProjectPublic, QueryIn, QueryOut
 from ..core.store import PROJECTS
 from ..core.auth import require_project_key
 
@@ -17,13 +17,13 @@ def create_project(body: ProjectCreate):
     PROJECTS[project_id] = proj
     return proj
 
-@router.get("", response_model=List[ProjectOut])
+@router.get("", response_model=List[ProjectPublic])
 def list_projects():
-    return list(PROJECTS.values())
+    return [ProjectPublic(id=proj.id, name=proj.name) for proj in PROJECTS.values()]
 
 UPLOAD_FILE = File(...)
 
-`@router.post`("/{project_id}/documents")
+@router.post("/{project_id}/documents")
 async def upload_document(
     project_id: str,
     authorization: Optional[str] = Header(default=None),
