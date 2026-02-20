@@ -1,49 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from pathlib import Path
-import shutil
+from fastapi import FastAPI
 
-from fastapi.concurrency import run_in_threadpool
+from .routes.health import router as health_router
+from .routes.projects import router as projects_router
+from .routes.jobs import router as jobs_router
+from .routes.legacy import router as legacy_router
 
-DATA_DIR = Path("data")
-RAW_DIR = DATA_DIR / "raw"
-RAW_DIR.mkdir(parents=True, exist_ok=True)
+def create_app() -> FastAPI:
+    app = FastAPI(title="RaaS", version="0.1.0")
+    app.include_router(health_router)
+    app.include_router(projects_router)
+    app.include_router(jobs_router)
+    app.include_router(legacy_router)
+    return app
 
-# Initialize fast api app
-# Skeleton for now
-app = FastAPI()
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok"
-    }
-    
-@app.post("/retrieve")    
-def retrieve(query: dict):
-    return {
-        "results":
-            [
-                {"text": "placeholder chunk", 
-                 "score": 0.9}
-            ]
-    }
-    
-@app.post("/files/upload")
-async def upload_file(file: UploadFile = File(...)):
-    try:
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="Missing filename")
-
-        safe_name = Path(file.filename).name
-        if safe_name in {"", ".", ".."}:
-            raise HTTPException(status_code=400, detail="Invalid filename")
-        out_path = RAW_DIR / safe_name
-
-        def _write_upload(src, dst):
-            with dst.open("wb") as f:
-                shutil.copyfileobj(src, f)
-
-        await run_in_threadpool(_write_upload, file.file, out_path)
-        return {"filename": file.filename, "saved_to": str(out_path)}
-    finally:
-        await file.close()
+app = create_app()
