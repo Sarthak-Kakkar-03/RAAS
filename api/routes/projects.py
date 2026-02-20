@@ -21,11 +21,13 @@ def create_project(body: ProjectCreate):
 def list_projects():
     return list(PROJECTS.values())
 
-@router.post("/{project_id}/documents")
+UPLOAD_FILE = File(...)
+
+`@router.post`("/{project_id}/documents")
 async def upload_document(
     project_id: str,
     authorization: Optional[str] = Header(default=None),
-    file: UploadFile = File(...)
+    file: UploadFile = UPLOAD_FILE
 ):
     require_project_key(project_id, authorization)
 
