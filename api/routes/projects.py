@@ -17,13 +17,14 @@ from api.services.chroma_service import get_or_create_project_collection
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-@router.post("", response_model=ProjectOut)
+`@router.post`("", response_model=ProjectOut)
 def create_project(body: ProjectCreate):
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
     proj = ProjectOut(id=project_id, name=body.name, api_key=api_key)
-    PROJECTS[project_id] = proj
+    # Create Chroma collection first - if this fails, don't store the project
     get_or_create_project_collection(project_id)
+    PROJECTS[project_id] = proj
     return proj
 
 
