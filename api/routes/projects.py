@@ -17,7 +17,7 @@ from api.services.chroma_service import get_or_create_project_collection
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-`@router.post`("", response_model=ProjectOut)
+@router.post("", response_model=ProjectOut)
 def create_project(body: ProjectCreate):
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
