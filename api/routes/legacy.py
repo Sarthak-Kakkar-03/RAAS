@@ -1,7 +1,8 @@
 from fastapi import APIRouter
-from ..models.schemas import QueryIn
+from api.models.schemas import QueryIn
 
 router = APIRouter(tags=["legacy"])
+
 
 @router.post("/retrieve")
 def retrieve_alias(body: QueryIn):

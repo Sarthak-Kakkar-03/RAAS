@@ -1,22 +1,27 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+
 class ProjectCreate(BaseModel):
     name: str
+
 
 class ProjectOut(BaseModel):
     id: str
     name: str
     api_key: str
 
+
 class ProjectPublic(BaseModel):
     id: str
     name: str
+
 
 class QueryIn(BaseModel):
     query: str
     top_k: int = 5
     filters: Optional[Dict[str, Any]] = None
+
 
 class QueryOut(BaseModel):
     results: List[Dict[str, Any]]

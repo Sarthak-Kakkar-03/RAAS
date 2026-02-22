@@ -25,12 +25,12 @@ This project handles retrieval infrastructure — not chatbot logic.
 
 ## Architecture
 
-UI (React + TypeScript)  
-↓  
-FastAPI  
-↓  
-Worker (chunk + embed)  
-↓  
+UI (React + TypeScript)
+↓
+FastAPI
+↓
+Worker (chunk + embed)
+↓
 Chroma (vector index)
 
 Everything runs with Docker Compose.
