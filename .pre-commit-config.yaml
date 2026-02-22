@@ -1,0 +1,19 @@
+exclude: ^(api/venv/|api/__pycache__/|api/.*/__pycache__/|\.git/)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        files: ^api/.*\.py$
+        args: [--fix]
+      - id: ruff-format
+        files: ^api/.*\.py$
