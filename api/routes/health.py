@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..services.chroma_service import heartbeat
+from api.services.chroma_service import heartbeat
 
 router = APIRouter(tags=["health"])
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..models.schemas import QueryIn
+from api.models.schemas import QueryIn
 
 router = APIRouter(tags=["legacy"])
 

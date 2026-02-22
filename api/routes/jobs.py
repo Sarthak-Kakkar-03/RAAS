@@ -3,8 +3,8 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Header, HTTPException
 
-from ..core.auth import require_project_key
-from ..core.store import JOBS
+from api.core.auth import require_project_key
+from api.core.store import JOBS
 
 router = APIRouter(tags=["jobs"])
 

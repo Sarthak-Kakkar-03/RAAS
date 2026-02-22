@@ -3,9 +3,10 @@ import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Header, UploadFile, File
 
-from ..models.schemas import ProjectCreate, ProjectOut, ProjectPublic, QueryIn, QueryOut
-from ..core.store import PROJECTS
-from ..core.auth import require_project_key
+from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic, QueryIn, QueryOut
+from api.core.store import PROJECTS
+from api.core.auth import require_project_key
+from api.services.chroma_service import get_or_create_project_collection
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -15,6 +16,7 @@ def create_project(body: ProjectCreate):
     api_key = uuid.uuid4().hex
     proj = ProjectOut(id=project_id, name=body.name, api_key=api_key)
     PROJECTS[project_id] = proj
+    get_or_create_project_collection(project_id)
     return proj
 
 @router.get("", response_model=List[ProjectPublic])

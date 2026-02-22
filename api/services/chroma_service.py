@@ -3,7 +3,7 @@ from __future__ import annotations
 import chromadb
 from chromadb.api.models.Collection import Collection
 
-from ..core.config import CHROMA_HOST, CHROMA_PORT
+from api.core.config import CHROMA_HOST, CHROMA_PORT
 
 
 def get_client() -> chromadb.HttpClient:

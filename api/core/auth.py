@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from typing import Optional
-from ..core.store import PROJECTS
+from api.core.store import PROJECTS
 
 def require_project_key(project_id: str, authorization: Optional[str]):
     proj = PROJECTS.get(project_id)
