@@ -13,6 +13,7 @@ from api.routes.projects import router as projects_router
 from api.routes.jobs import router as jobs_router
 from api.routes.legacy import router as legacy_router
 
+
 def create_app() -> FastAPI:
     app = FastAPI(title="RaaS", version="0.1.0")
     app.include_router(health_router)
@@ -20,5 +21,6 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(legacy_router)
     return app
+
 
 app = create_app()
