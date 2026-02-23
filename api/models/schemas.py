@@ -31,8 +31,8 @@ class QueryOut(BaseModel):
 
 class DocumentOut(BaseModel):
     doc_id: str
-    file_name: str
+    filename: str
     path: str
-    bytes: str
+    bytes: int
     uploaded_at: float
     indexed: bool = False
