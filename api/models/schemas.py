@@ -27,3 +27,12 @@ class QueryOut(BaseModel):
     results: List[Dict[str, Any]]
     latency_ms: int
     retrieval_debug: Dict[str, Any]
+
+
+class DocumentOut(BaseModel):
+    doc_id: str
+    filename: str
+    path: str
+    bytes: int
+    uploaded_at: float
+    indexed: bool = False
