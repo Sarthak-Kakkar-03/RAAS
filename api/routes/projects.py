@@ -17,7 +17,7 @@ from api.models.schemas import (
 )
 from api.core.store import PROJECTS
 from api.core.auth import require_project_key
-from api.services.chroma_service import get_or_create_project_collection
+from api.services.chroma_repo import get_or_create_project_collection
 from api.core.config import RAW_DIR
 from api.core.docs_store import DOCS
 from api.models.schemas import DocumentOut
