@@ -11,15 +11,30 @@ CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 
 
+from pydantic import BaseModel, Field, SecretStr, field_validator
+import os
+
+
 class Settings(BaseModel):
     """
     Application settings loaded from environment variables.
     """
 
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_embedding_model: str = os.getenv(
-        "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
+    openai_api_key: SecretStr = Field(
+        default_factory=lambda: SecretStr(os.getenv("OPENAI_API_KEY", ""))
     )
+    openai_embedding_model: str = Field(
+        default_factory=lambda: os.getenv(
+            "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
+        )
+    )
+
+    `@field_validator`("openai_api_key")
+    `@classmethod`
+    def validate_openai_api_key(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().strip():
+            raise ValueError("OPENAI_API_KEY must be set")
+        return value
 
 
 settings = Settings()
