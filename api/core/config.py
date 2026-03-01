@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DATA_DIR = Path("data")
 RAW_DIR = DATA_DIR / "raw"
@@ -11,20 +12,21 @@ CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
 
 
-class Settings(BaseModel):
+class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
     """
 
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file_encoding="utf-8",
+    )
+
     openai_api_key: SecretStr = Field(
-        default_factory=lambda: SecretStr(os.getenv("OPENAI_API_KEY", "")),
+        default_factory=lambda: SecretStr(""),
         validate_default=True,
     )
-    openai_embedding_model: str = Field(
-        default_factory=lambda: os.getenv(
-            "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
-        )
-    )
+    openai_embedding_model: str = Field(default="text-embedding-3-small")
 
     @field_validator("openai_api_key")
     @classmethod
