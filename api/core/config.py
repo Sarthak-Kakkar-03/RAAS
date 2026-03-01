@@ -21,7 +21,8 @@ class Settings(BaseModel):
     """
 
     openai_api_key: SecretStr = Field(
-        default_factory=lambda: SecretStr(os.getenv("OPENAI_API_KEY", ""))
+        default_factory=lambda: SecretStr(os.getenv("OPENAI_API_KEY", "")),
+        validate_default=True,
     )
     openai_embedding_model: str = Field(
         default_factory=lambda: os.getenv(
@@ -29,8 +30,8 @@ class Settings(BaseModel):
         )
     )
 
-    `@field_validator`("openai_api_key")
-    `@classmethod`
+    @field_validator("openai_api_key")
+    @classmethod
     def validate_openai_api_key(cls, value: SecretStr) -> SecretStr:
         if not value.get_secret_value().strip():
             raise ValueError("OPENAI_API_KEY must be set")
