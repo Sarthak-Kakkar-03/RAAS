@@ -1,4 +1,4 @@
-from services.embedder import embed_chunks, embed_query
+from api.services.embedder import embed_chunks, embed_query
 
 chunks = [
     "LangChain is a framework for building context-aware applications.",

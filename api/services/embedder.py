@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Sequence
 from langchain_openai import OpenAIEmbeddings
-from core.config import settings
+from api.core.config import settings
 
 
 def _sanitize(text: str) -> str:
