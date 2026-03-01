@@ -12,6 +12,7 @@ dependencies = [
   "chromadb",
   "fastapi",
   "langchain>=1.2.10",
+  "langchain-text-splitters>=1.1.1",
   "pre-commit>=4.5.1",
   "pydantic",
   "python-multipart",
