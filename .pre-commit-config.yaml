@@ -1,6 +1,5 @@
 exclude: ^(api/venv/|api/__pycache__/|api/.*/__pycache__/|\.git/)
 repos:
-repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

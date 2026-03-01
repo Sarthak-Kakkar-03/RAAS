@@ -1,9 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "raas-api"
+version = "0.1.0"
+description = "Retrieval-as-a-Service API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "chromadb",
+  "fastapi",
+  "langchain>=1.2.10",
+  "pre-commit>=4.5.1",
+  "pydantic",
+  "python-multipart",
+  "tiktoken>=0.12.0",
+  "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit",
+  "ruff",
+]
+
+[tool.uv]
+# This repo is an application layout, not an installable package.
+package = false
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
 exclude = [
   ".git",
   ".ruff_cache",
+  ".venv",
   "api/venv",
   "api/__pycache__",
 ]
