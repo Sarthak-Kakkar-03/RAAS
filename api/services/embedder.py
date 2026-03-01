@@ -21,17 +21,18 @@ def build_embedder(model: str | None = None) -> OpenAIEmbeddings:
 
 
 def embed_chunks(chunks: Sequence[str], model: str | None = None) -> List[List[float]]:
-    embedder = build_embedder(model=model)
     cleaned = [_sanitize(c) for c in chunks]
+    cleaned = [c for c in cleaned if c]
     if not cleaned:
         raise ValueError("non empty chunks are needed to embed")
+    embedder = build_embedder(model=model)
     vectors = embedder.embed_documents(list(cleaned))
     return vectors
 
 
 def embed_query(query: str, model: str | None = None) -> List[float]:
-    embedder = build_embedder(model=model)
     q = _sanitize(query)
     if not q:
         raise ValueError("cant embed empty query")
+    embedder = build_embedder(model=model)
     return embedder.embed_query(q)
