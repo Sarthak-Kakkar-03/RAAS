@@ -1,6 +1,5 @@
 from api.services.embedder import embed_chunks, embed_query
 
-from services.embedder import embed_chunks, embed_query
 
 def main() -> None:
     chunks = [
