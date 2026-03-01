@@ -1,6 +1,6 @@
 from pathlib import Path
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr, field_validator
 
 DATA_DIR = Path("data")
 RAW_DIR = DATA_DIR / "raw"
@@ -9,10 +9,6 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
-
-
-from pydantic import BaseModel, Field, SecretStr, field_validator
-import os
 
 
 class Settings(BaseModel):
