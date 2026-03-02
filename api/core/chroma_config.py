@@ -7,7 +7,7 @@ class ChromaSettings(BaseSettings):
     """Chroma Application settings for loading env
 
     Args:
-        BaseSettings (_type_): _description_
+        BaseSettings (_type_): basesetting model from pydantic
     """
 
     model_config = SettingsConfigDict(
