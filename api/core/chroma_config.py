@@ -1,6 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import os
+from pathlib import Path
 
 
 class ChromaSettings(BaseSettings):

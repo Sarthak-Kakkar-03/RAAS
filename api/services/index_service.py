@@ -29,12 +29,17 @@ def index_chunks_into_chroma(
     if not chunks:
         return 0
 
-    vectors = embed_chunks(chunks)
-    if len(vectors) != len(chunks):
+    cleaned_chunks = [c.replace("\x00", "").strip() for c in chunks]
+    cleaned_chunks = [c for c in cleaned_chunks if c]
+    if not cleaned_chunks:
+        return 0
+
+    vectors = embed_chunks(cleaned_chunks)
+    if len(vectors) != len(cleaned_chunks):
         raise RuntimeError("Embedding output length does not match number of chunks.")
 
     records: List[ChunkRecord] = []
-    for i, (text, vec) in enumerate(zip(chunks, vectors)):
+    for i, (text, vec) in enumerate(zip(cleaned_chunks, vectors)):
         md: Dict = {
             "doc_id": doc_id,
             "chunk_index": i,
