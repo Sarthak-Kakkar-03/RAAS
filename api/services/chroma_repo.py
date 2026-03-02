@@ -65,6 +65,29 @@ class ChromaRepo:
         col = self.collection(project_id)
         col.delete(where={"doc_id": doc_id})
 
+    def replace_by_doc_id(
+        self, project_id: str, doc_id: str, chunks: List[ChunkRecord]
+    ) -> None:
+        """
+        Safely replace all chunks for a doc:
+        1) upsert new chunks
+        2) delete only stale previous chunk ids
+        """
+        if not chunks:
+            self.delete_by_doc_id(project_id=project_id, doc_id=doc_id)
+            return
+
+        col = self.collection(project_id)
+        previous = col.get(where={"doc_id": doc_id})
+        previous_ids = set(previous.get("ids") or [])
+
+        self.upsert_chunks(project_id=project_id, chunks=chunks)
+
+        new_ids = {c.id for c in chunks}
+        stale_ids = sorted(previous_ids - new_ids)
+        if stale_ids:
+            col.delete(ids=stale_ids)
+
     def count_chunks(self, project_id: str) -> int:
         col = self.collection(project_id)
         return col.count()
