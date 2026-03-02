@@ -46,18 +46,47 @@ class ChromaRepo:
         ids = [c.id for c in chunks]
         documents = [c.text for c in chunks]
         metadatas = [c.metadata for c in chunks]
+        has_embeddings = [c.embedding is not None for c in chunks]
 
-        if all(c.embedding is not None for c in chunks):
+        if all(has_embeddings):
             embeddings = [c.embedding for c in chunks]
             col.upsert(
                 ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings
             )
-        else:
-            col.upsert(ids=ids, documents=documents, metadatas=metadatas)
+            return
+        if any(has_embeddings):
+            raise ValueError(
+                "Mixed embeddings state: some chunks have embeddings and some do not."
+            )
+
+        col.upsert(ids=ids, documents=documents, metadatas=metadatas)
 
     def delete_by_doc_id(self, project_id: str, doc_id: str) -> None:
         col = self.collection(project_id)
         col.delete(where={"doc_id": doc_id})
+
+    def replace_by_doc_id(
+        self, project_id: str, doc_id: str, chunks: List[ChunkRecord]
+    ) -> None:
+        """
+        Safely replace all chunks for a doc:
+        1) upsert new chunks
+        2) delete only stale previous chunk ids
+        """
+        if not chunks:
+            self.delete_by_doc_id(project_id=project_id, doc_id=doc_id)
+            return
+
+        col = self.collection(project_id)
+        previous = col.get(where={"doc_id": doc_id})
+        previous_ids = set(previous.get("ids") or [])
+
+        self.upsert_chunks(project_id=project_id, chunks=chunks)
+
+        new_ids = {c.id for c in chunks}
+        stale_ids = sorted(previous_ids - new_ids)
+        if stale_ids:
+            col.delete(ids=stale_ids)
 
     def count_chunks(self, project_id: str) -> int:
         col = self.collection(project_id)
