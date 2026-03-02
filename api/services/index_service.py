@@ -55,5 +55,6 @@ def index_chunks_into_chroma(
         )
 
     repo = ChromaRepo()
+    repo.delete_by_doc_id(project_id=project_id, doc_id=doc_id)
     repo.upsert_chunks(project_id=project_id, chunks=records)
     return len(records)
