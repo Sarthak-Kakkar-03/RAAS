@@ -46,14 +46,20 @@ class ChromaRepo:
         ids = [c.id for c in chunks]
         documents = [c.text for c in chunks]
         metadatas = [c.metadata for c in chunks]
+        has_embeddings = [c.embedding is not None for c in chunks]
 
-        if all(c.embedding is not None for c in chunks):
+        if all(has_embeddings):
             embeddings = [c.embedding for c in chunks]
             col.upsert(
                 ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings
             )
-        else:
-            col.upsert(ids=ids, documents=documents, metadatas=metadatas)
+            return
+        if any(has_embeddings):
+            raise ValueError(
+                "Mixed embeddings state: some chunks have embeddings and some do not."
+            )
+
+        col.upsert(ids=ids, documents=documents, metadatas=metadatas)
 
     def delete_by_doc_id(self, project_id: str, doc_id: str) -> None:
         col = self.collection(project_id)
