@@ -9,7 +9,7 @@ from api.services.embedder import embed_chunks
 
 def _stable_doc_hash(doc_id: str) -> str:
     """Short stable hash used in chunk ids."""
-    return hashlib.sha1(doc_id.encode("utf-8")).hexdigest()[:16]
+    return hashlib.blake2s(doc_id.encode("utf-8"), digest_size=8).hexdigest()
 
 
 def make_chunk_id(project_id: str, doc_id: str, chunk_index: int) -> str:
