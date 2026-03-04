@@ -12,6 +12,7 @@ from api.routes.health import router as health_router
 from api.routes.projects import router as projects_router
 from api.routes.jobs import router as jobs_router
 from api.routes.legacy import router as legacy_router
+from api.routes.docs import router as doc_router
 
 
 def create_app() -> FastAPI:
@@ -20,7 +21,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(jobs_router)
     app.include_router(legacy_router)
-    app.include_router(docs.router)
+    app.include_router(doc_router)
     return app
 
 
