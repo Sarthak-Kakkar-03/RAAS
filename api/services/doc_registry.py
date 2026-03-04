@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, Optional
 from api.core.db import get_conn
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 
