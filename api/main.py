@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(jobs_router)
     app.include_router(legacy_router)
+    app.include_router(docs.router)
     return app
 
 

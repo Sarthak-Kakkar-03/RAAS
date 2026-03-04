@@ -16,6 +16,18 @@ class DocRecord:
     error: Optional[str] = None
 
 
+def _row_to_doc_record(row) -> DocRecord:
+    return DocRecord(
+        project_id=row["project_id"],
+        doc_id=row["doc_id"],
+        filename=row["filename"],
+        status=row["status"],
+        num_chunks=row["num_chunks"],
+        created_at=row["created_at"],
+        error=row["error"],
+    )
+
+
 def init_registry() -> None:
     with get_conn() as conn:
         conn.execute("""
@@ -67,7 +79,7 @@ def list_docs(project_id: str) -> List[DocRecord]:
             (project_id,),
         ).fetchall()
 
-    return [DocRecord(**dict(r)) for r in rows]
+    return [_row_to_doc_record(r) for r in rows]
 
 
 def get_doc(project_id: str, doc_id: str) -> Optional[DocRecord]:
@@ -78,7 +90,7 @@ def get_doc(project_id: str, doc_id: str) -> Optional[DocRecord]:
             (project_id, doc_id),
         ).fetchone()
 
-    return DocRecord(**dict(row)) if row else None
+    return _row_to_doc_record(row) if row else None
 
 
 def delete_doc(project_id: str, doc_id: str) -> None:
