@@ -36,7 +36,7 @@ def init_registry() -> None:
         doc_id TEXT NOT NULL,
         filename TEXT NOT NULL,
         status TEXT NOT NULL,
-        num_chunks INTEGER NOT NULL DEFAULT 0,
+        num_chunks INTEGER NOT NULL DEFAULT 0 CHECK (num_chunks >= 0),
         error TEXT,
         created_at TEXT NOT NULL,
         PRIMARY KEY (project_id, doc_id)
