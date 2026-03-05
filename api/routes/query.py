@@ -24,7 +24,7 @@ def query_project(
             project_id=project_id,
             query=body.query,
             top_k=body.top_k,
-            where=body.filters,
+            where=body.where,
         )
         latency_ms = int((time.time() - t0) * 1000)
         return QueryOut(

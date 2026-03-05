@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 
@@ -20,7 +20,10 @@ class ProjectPublic(BaseModel):
 class QueryIn(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(5, ge=1, le=50)
-    filters: Optional[Dict[str, Any]] = None
+    where: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("where", "filters"),
+    )
 
 
 class QueryOut(BaseModel):
