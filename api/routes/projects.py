@@ -1,11 +1,8 @@
-import time
 import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Header, UploadFile, File
-from pathlib import Path
 import shutil
-import uuid
-import time
+from dataclasses import asdict
 
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
@@ -13,8 +10,7 @@ from api.core.store import PROJECTS
 from api.core.auth import require_project_key
 from api.services.chroma_repo import get_or_create_project_collection
 from api.core.config import RAW_DIR
-from api.core.docs_store import DOCS
-from api.models.schemas import DocumentOut
+from api.services.doc_registry import list_docs, upsert_doc
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -59,16 +55,22 @@ async def upload_document(
     with dst_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    meta = {
+    upsert_doc(
+        project_id=project_id,
+        doc_id=doc_id,
+        filename=safe_name,
+        status="uploaded",
+        ingested=False,
+    )
+    return {
+        "ok": True,
+        "project_id": project_id,
         "doc_id": doc_id,
         "filename": safe_name,
         "path": str(dst_path),
         "bytes": dst_path.stat().st_size,
-        "uploaded_at": time.time(),
-        "indexed": False,
+        "ingested": False,
     }
-    DOCS.setdefault(project_id, []).append(meta)
-    return {"ok": True, "project_id": project_id, **meta}
 
 
 @router.get("/{project_id}/documents")
@@ -77,4 +79,4 @@ def list_documents(
     authorization: Optional[str] = Header(default=None),
 ):
     require_project_key(project_id, authorization)
-    return {"documents": DOCS.get(project_id, [])}
+    return {"documents": [asdict(doc) for doc in list_docs(project_id)]}
