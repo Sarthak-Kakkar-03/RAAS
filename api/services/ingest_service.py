@@ -44,6 +44,8 @@ def ingest_pdf_file(
         filename=filename,
         chunks=chunks,
     )
+    if indexed_count == 0:
+        raise ValueError("No valid chunks were indexed from this PDF.")
 
     return {
         "project_id": project_id,
