@@ -5,6 +5,7 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from api.services.ingest_service import ingest_pdf_file
+import uuid
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["ingest"])
 
@@ -13,7 +14,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.post("/ingest")
-async def ingest(project_id: str, file: UploadFile = File(...)):
+def ingest(project_id: str, file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
