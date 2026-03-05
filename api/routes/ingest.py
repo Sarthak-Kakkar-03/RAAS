@@ -22,7 +22,10 @@ async def ingest(project_id: str, file: UploadFile = File(...)):
             status_code=400, detail="Only PDF files are supported in v1."
         )
 
-    dest_path = UPLOAD_DIR / file.filename
+    safe_name = Path(file.filename).name
+    if safe_name != file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    dest_path = UPLOAD_DIR / f"{uuid.uuid4()}-{safe_name}"
 
     try:
         with dest_path.open("wb") as out:
