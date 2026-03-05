@@ -13,6 +13,7 @@ from api.routes.projects import router as projects_router
 from api.routes.jobs import router as jobs_router
 from api.routes.legacy import router as legacy_router
 from api.routes.docs import router as doc_router
+from api.routes.query import router as query_router
 
 
 def create_app() -> FastAPI:
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(legacy_router)
     app.include_router(doc_router)
+    app.include_router(query_router)
     return app
 
 
