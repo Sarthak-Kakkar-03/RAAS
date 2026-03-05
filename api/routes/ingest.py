@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -8,6 +9,7 @@ from api.services.ingest_service import ingest_pdf_file
 import uuid
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["ingest"])
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path("data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,8 +33,12 @@ def ingest(project_id: str, file: UploadFile = File(...)):
     try:
         with dest_path.open("wb") as out:
             shutil.copyfileobj(file.file, out)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save upload: {e}")
+    except Exception:
+        logger.exception(
+            "Failed to save upload",
+            extra={"project_id": project_id, "filename": file.filename},
+        )
+        raise HTTPException(status_code=500, detail="Failed to save upload")
 
     try:
         result = ingest_pdf_file(
@@ -49,5 +55,9 @@ def ingest(project_id: str, file: UploadFile = File(...)):
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingest failed: {e}")
+    except Exception:
+        logger.exception(
+            "Ingest failed",
+            extra={"project_id": project_id, "filename": file.filename},
+        )
+        raise HTTPException(status_code=500, detail="Ingest failed")
