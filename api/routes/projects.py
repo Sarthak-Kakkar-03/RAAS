@@ -8,13 +8,7 @@ import uuid
 import time
 
 
-from api.models.schemas import (
-    ProjectCreate,
-    ProjectOut,
-    ProjectPublic,
-    QueryIn,
-    QueryOut,
-)
+from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
 from api.core.store import PROJECTS
 from api.core.auth import require_project_key
 from api.services.chroma_repo import get_or_create_project_collection
@@ -84,22 +78,3 @@ def list_documents(
 ):
     require_project_key(project_id, authorization)
     return {"documents": DOCS.get(project_id, [])}
-
-
-@router.post("/{project_id}/query", response_model=QueryOut)
-def query_project(
-    project_id: str,
-    body: QueryIn,
-    authorization: Optional[str] = Header(default=None),
-):
-    require_project_key(project_id, authorization)
-
-    t0 = time.time()
-    results = []
-    latency_ms = int((time.time() - t0) * 1000)
-
-    return QueryOut(
-        results=results,
-        latency_ms=latency_ms,
-        retrieval_debug={"project_id": project_id, "top_k": body.top_k},
-    )

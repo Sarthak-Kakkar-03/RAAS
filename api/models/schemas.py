@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 
@@ -18,8 +18,8 @@ class ProjectPublic(BaseModel):
 
 
 class QueryIn(BaseModel):
-    query: str
-    top_k: int = 5
+    query: str = Field(..., min_length=1)
+    top_k: int = Field(5, ge=1, le=50)
     filters: Optional[Dict[str, Any]] = None
 
 
@@ -27,6 +27,7 @@ class QueryOut(BaseModel):
     results: List[Dict[str, Any]]
     latency_ms: int
     retrieval_debug: Dict[str, Any]
+    ok: bool = True
 
 
 class DocumentOut(BaseModel):
