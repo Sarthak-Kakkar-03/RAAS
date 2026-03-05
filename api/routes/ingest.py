@@ -40,12 +40,14 @@ def ingest(project_id: str, file: UploadFile = File(...)):
         )
         raise HTTPException(status_code=500, detail="Failed to save upload")
 
+    ingest_succeeded = False
     try:
         result = ingest_pdf_file(
             project_id=project_id,
             file_path=dest_path,
             filename=file.filename,
         )
+        ingest_succeeded = True
         return {
             "ok": True,
             "project_id": result.get("project_id", project_id),
@@ -61,3 +63,16 @@ def ingest(project_id: str, file: UploadFile = File(...)):
             extra={"project_id": project_id, "filename": file.filename},
         )
         raise HTTPException(status_code=500, detail="Ingest failed")
+    finally:
+        if not ingest_succeeded and dest_path.exists():
+            try:
+                dest_path.unlink()
+            except Exception:
+                logger.exception(
+                    "Failed to remove uploaded file after ingest failure",
+                    extra={
+                        "project_id": project_id,
+                        "filename": file.filename,
+                        "dest_path": str(dest_path),
+                    },
+                )
