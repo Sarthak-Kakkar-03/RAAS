@@ -24,7 +24,7 @@ def query_project(
             project_id=project_id,
             query=body.query,
             top_k=body.top_k,
-            where=body.where,
+            where=body.filters,
         )
         latency_ms = int((time.time() - t0) * 1000)
         return QueryOut(
@@ -32,7 +32,9 @@ def query_project(
             latency_ms=latency_ms,
             retrieval_debug={"project_id": project_id, "top_k": body.top_k},
         )
+    except HTTPException:
+        raise
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=500, detail="Query failed")
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Query failed") from e
