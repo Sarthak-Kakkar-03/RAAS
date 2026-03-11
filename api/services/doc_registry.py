@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sqlite3
 from typing import List, Optional
 from api.core.db import get_conn
 from datetime import datetime, timezone
@@ -45,7 +46,6 @@ def init_registry() -> None:
         PRIMARY KEY (project_id, doc_id)
     )
     """)
-import sqlite3
 
         columns = {
             row["name"]

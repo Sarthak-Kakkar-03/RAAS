@@ -109,6 +109,18 @@ curl http://localhost:8001/api/v1/heartbeat
 docker compose down
 ```
 
+Full reset (wipe local state):
+
+```bash
+docker compose down -v
+rm -rf data/
+```
+
+Use this when you want to remove all persisted state, including:
+- `data/registry.db`
+- uploaded files in `data/raw/`
+- Chroma vectors stored in the `chroma_data` volume
+
 ## Local Run (Without Docker)
 
 If you prefer running directly with `uv`:
