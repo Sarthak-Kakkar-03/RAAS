@@ -1,281 +1,203 @@
-cat << 'EOF' > README.md
 # Retrieval-as-a-Service (RaaS)
 
-Self-hosted Retrieval infrastructure for LLM applications.
+Self-hosted retrieval backend for RAG applications.
 
-Upload documents → build an index → call one retrieval API.
-
-RaaS provides the retrieval layer of a Retrieval-Augmented Generation (RAG) stack so developers can quickly add document context to their models without building ingestion pipelines or vector database infrastructure.
-
----
+Upload documents, index them into Chroma, and query top-k relevant chunks through a project-scoped API.
 
 ## What This Project Is
 
-RaaS is a lightweight service that handles the retrieval side of Retrieval-Augmented Generation (RAG).
+RaaS provides the retrieval layer of a RAG stack:
+- document ingestion
+- chunking
+- embedding generation
+- vector indexing
+- similarity retrieval APIs
 
-It provides:
-
-- Document storage
-- Token-aware chunking
-- Embedding generation
-- Vector indexing (Chroma)
-- Retrieval APIs for LLM applications
-
-This project does not include chatbot logic or LLM orchestration.
-It only returns relevant document context for your model.
-
-You can plug it into:
-
-- OpenAI
-- Anthropic
-- Local LLMs
-- Any custom inference pipeline
-
----
-
-## Example Use Case
-
-A developer wants to build a documentation assistant.
-
-Instead of building the entire retrieval system themselves they can:
-
-1. Deploy RaaS
-2. Upload documentation files
-3. Run indexing
-4. Query the retrieval API from their application
-
-Their LLM then uses the returned context to generate answers.
-
----
+RaaS does not include answer generation or chat orchestration. Your app calls RaaS for context, then passes that context to your LLM of choice.
 
 ## Architecture
 
-Browser (React UI)
-        ↓
+```text
+Client / App Server
+        |
+        v
 FastAPI (RaaS API)
-        ↓
-Chunking + Embedding Worker
-        ↓
-Chroma Vector Database
-        ↓
-Document Storage
+        |
+        +--> SQLite (projects, jobs, document registry)
+        |
+        +--> Local file storage (raw uploaded PDFs)
+        |
+        +--> Chroma Vector DB (chunk vectors + metadata)
+```
 
-At inference time the flow becomes:
+Ingestion path:
+`upload -> extract text -> chunk -> embed -> upsert to Chroma`
 
-User question
-      ↓
-Application server
-      ↓
-RaaS Retrieval API
-      ↓
-Top-K document chunks
-      ↓
-LLM prompt context
+Retrieval path:
+`query -> embed query -> similarity search in Chroma -> top-k chunks`
 
-RaaS acts as the retrieval microservice in a RAG system.
+## Features
 
----
-
-## Features (MVP)
-
-- Document upload via UI or API
-- Token-aware chunking (LangChain splitters)
-- OpenAI embedding support (configurable)
-- Vector indexing with Chroma
-- Project-scoped retrieval
-- Retrieval endpoint for model integration
-- Dockerized services
-- Model-agnostic design
-
----
+- Project creation with per-project API key
+- Auth-protected project endpoints
+- PDF upload and raw file storage
+- Document registry with ingest status
+- Synchronous ingest endpoint
+- Asynchronous indexing jobs (`queued/running/completed/failed`)
+- Project-scoped retrieval with optional metadata filters
+- Chroma health check integration
+- Persistent project/job/document state in SQLite
 
 ## Tech Stack
 
-Backend
-- FastAPI
-- Python
-
-Frontend
-- React
-- TypeScript
-- Vite
-
-Retrieval Infrastructure
-- Chroma vector database
-- OpenAI embeddings
-
-Deployment
-- Docker
-- Docker Compose
-- AWS EC2 (recommended for self-hosting)
-
----
+- API: FastAPI
+- Language: Python 3.12
+- Vector DB: Chroma
+- Embeddings: OpenAI (`langchain-openai`)
+- PDF extraction: PyMuPDF
+- Chunking: LangChain text splitters
+- Persistence: SQLite
+- Local orchestration: Docker Compose
 
 ## Project Structure
 
-raas/
-  api/
-    routes/
-    services/
-    models/
-    core/
-
-frontend/
-  src/
-
-docker/
+```text
+api/
+  core/       # config, db, auth
+  models/     # pydantic schemas
+  routes/     # HTTP routes
+  services/   # ingest, indexing, retrieval, registries
+data/
+  raw/        # uploaded files
+  registry.db # sqlite persistence
 docker-compose.yml
+README.md
+```
 
-Key components:
+## Local Run (Docker Compose)
 
-- routes → API endpoints
-- services → chunking, indexing, embedding logic
-- models → request/response schemas
-- core → config + storage utilities
+1. Set environment variables in `.env`:
 
----
+```env
+OPENAI_API_KEY=your_key_here
+```
 
-## Quick Start (Docker)
+2. Start services:
 
-### 1. Clone the repository
-
-git clone https://github.com/Sarthak-Kakkar-03/RAAS.git
-cd RAAS
-
-### 2. Start services
-
+```bash
 docker compose up -d
+```
 
-This launches:
+`api` service uses `uv` internally (`uv sync --frozen` then `uv run uvicorn ...`).
 
-- FastAPI service
-- Chroma vector database
-- Frontend UI
+3. Verify services:
 
----
-
-### 3. Verify Chroma is running
-
+```bash
+curl http://localhost:8000/health
 curl http://localhost:8001/api/v1/heartbeat
+```
 
-Expected response:
+4. Stop services:
 
-{
-  "nanosecond heartbeat": ...
-}
-
----
-
-### 4. Stop services
-
+```bash
 docker compose down
+```
 
----
+## Local Run (Without Docker)
 
-## Using the Retrieval API
+If you prefer running directly with `uv`:
 
-Your application queries RaaS during inference.
+```bash
+uv sync
+uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-Example request:
+Run Chroma separately (for example with Docker):
 
-POST /projects/{project_id}/query
+```bash
+docker compose up -d chroma
+```
 
-Example curl request:
+## API Endpoints
 
-curl -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
+- `GET /health` - API and Chroma heartbeat status
+- `POST /projects` - create project (`id`, `name`, `api_key`)
+- `GET /projects` - list projects
+- `POST /projects/{project_id}/documents` - upload PDF (auth required)
+- `GET /projects/{project_id}/documents` - list uploaded docs (auth required)
+- `GET /projects/{project_id}/docs` - list document registry entries (auth required)
+- `GET /projects/{project_id}/docs/{doc_id}` - get document registry entry (auth required)
+- `DELETE /projects/{project_id}/docs/{doc_id}` - delete doc from Chroma + registry (auth required)
+- `POST /projects/{project_id}/ingest` - synchronous ingest of pending docs (auth required)
+- `POST /projects/{project_id}/index` - enqueue background indexing job (auth required)
+- `GET /jobs/{job_id}` - fetch job status/result
+- `POST /projects/{project_id}/query` - retrieve top-k chunks (auth required)
+- `POST /retrieve` - legacy alias (returns note)
+
+## API Flow (Quick Example)
+
+1. Create a project:
+
+```bash
+curl -s -X POST http://localhost:8000/projects \
+  -H "Content-Type: application/json" \
+  -d '{"name":"demo"}'
+```
+
+2. Upload a PDF:
+
+```bash
+curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/documents \
+  -H "Authorization: Bearer <API_KEY>" \
+  -F "file=@./sample.pdf"
+```
+
+3. Index documents (choose one):
+
+Synchronous:
+```bash
+curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/ingest \
+  -H "Authorization: Bearer <API_KEY>"
+```
+
+Background job:
+```bash
+curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/index \
+  -H "Authorization: Bearer <API_KEY>"
+```
+
+Check job status:
+```bash
+curl -s http://localhost:8000/jobs/<JOB_ID>
+```
+
+4. Query retrieval:
+
+```bash
+curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is the return policy?",
-    "top_k": 5
-  }'
+  -d '{"query":"What does this document say?","top_k":5}'
+```
 
-Example response:
+## Persistence and Data
 
-{
-  "results": [
-    {
-      "text": "...document chunk...",
-      "metadata": {
-        "filename": "policy.pdf",
-        "chunk_index": 12
-      }
-    }
-  ],
-  "latency_ms": 45
-}
+- Projects and jobs are stored in `data/registry.db`
+- Document registry metadata is stored in `data/registry.db`
+- Uploaded files are stored at `data/raw/<project_id>/`
+- Chroma data is persisted through the `chroma_data` Docker volume
 
-Your application then inserts those results into the LLM prompt.
+## Customization Points
 
----
+- Swap embedding model in `api/core/config.py`
+- Tune chunk size/overlap in `api/services/chunker.py`
+- Add reranking or hybrid search in `api/services/retrieval_service.py`
+- Replace local file storage with object storage (S3/GCS)
+- Extend auth beyond API keys (JWT, service tokens, RBAC)
 
-## Example Integration (Python)
+## Current Limitations
 
-import requests
-
-res = requests.post(
-    "http://localhost:8000/projects/my_project/query",
-    headers={"Authorization": "Bearer API_KEY"},
-    json={
-        "query": "What is the return policy?",
-        "top_k": 5
-    }
-)
-
-chunks = res.json()["results"]
-
-Those chunks can then be inserted into your LLM prompt.
-
----
-
-## Deployment
-
-RaaS is designed to run on your own infrastructure.
-
-Typical deployment:
-
-AWS EC2
- ├─ FastAPI container
- ├─ Chroma container
- └─ React UI
-
-Users interact with:
-
-http://<EC2_IP>/
-
-Developers can then call the retrieval API from their application servers.
-
----
-
-## Template Philosophy
-
-This project is intentionally designed as a template starter.
-
-You can easily customize:
-
-- embedding models
-- chunking strategy
-- retrieval ranking
-- document storage
-- authentication
-
----
-
-## Future Improvements
-
-Possible extensions:
-
-- async indexing workers
-- hybrid search (BM25 + vectors)
-- metadata filtering
-- streaming ingestion
-- S3 document storage
-- hosted SaaS version
-
----
-
-## License
-
-MIT License
-
-EOF
+- No frontend in this repo
+- No automated test suite yet
+- SQLite + in-process background tasks are good for MVP, not high-scale production
+- OCR for scanned PDFs is not implemented in current ingest flow
