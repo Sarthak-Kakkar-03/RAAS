@@ -6,11 +6,12 @@ from dataclasses import asdict
 
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
-from api.core.store import PROJECTS
 from api.core.auth import require_project_key
 from api.services.chroma_repo import get_or_create_project_collection
 from api.core.config import RAW_DIR
 from api.services.doc_registry import list_docs, upsert_doc
+from api.services.project_registry import create_project as create_project_record
+from api.services.project_registry import list_projects as list_project_records
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -19,16 +20,14 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 def create_project(body: ProjectCreate):
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
-    proj = ProjectOut(id=project_id, name=body.name, api_key=api_key)
     # Create Chroma collection first - if this fails, don't store the project
     get_or_create_project_collection(project_id)
-    PROJECTS[project_id] = proj
-    return proj
+    return create_project_record(project_id=project_id, name=body.name, api_key=api_key)
 
 
 @router.get("", response_model=List[ProjectPublic])
 def list_projects():
-    return [ProjectPublic(id=proj.id, name=proj.name) for proj in PROJECTS.values()]
+    return list_project_records()
 
 
 UPLOAD_FILE = File(...)
