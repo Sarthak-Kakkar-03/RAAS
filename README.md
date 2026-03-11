@@ -80,7 +80,13 @@ README.md
 
 ```env
 OPENAI_API_KEY=your_key_here
+PROJECT_API_KEY_SECRET=optional-for-local-dev-set-for-shared-use
 ```
+
+`PROJECT_API_KEY_SECRET` guidance:
+- Optional for local single-user/dev use
+- Set it for shared/team/prod deployments and keep it stable
+- If unset, app falls back to a development secret and logs a warning
 
 2. Start services:
 

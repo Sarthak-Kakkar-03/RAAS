@@ -7,10 +7,14 @@ from dataclasses import asdict
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
 from api.core.auth import require_project_key
-from api.services.chroma_repo import get_or_create_project_collection
+from api.services.chroma_repo import (
+    delete_project_collection,
+    get_or_create_project_collection,
+)
 from api.core.config import RAW_DIR
 from api.services.doc_registry import list_docs, upsert_doc
 from api.services.project_registry import create_project as create_project_record
+from api.services.project_registry import delete_project as delete_project_record
 from api.services.project_registry import list_projects as list_project_records
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -20,9 +24,21 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 def create_project(body: ProjectCreate):
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
-    # Create Chroma collection first - if this fails, don't store the project
-    get_or_create_project_collection(project_id)
-    return create_project_record(project_id=project_id, name=body.name, api_key=api_key)
+    project = create_project_record(
+        project_id=project_id,
+        name=body.name,
+        api_key=api_key,
+    )
+    try:
+        get_or_create_project_collection(project_id)
+    except Exception:
+        delete_project_record(project_id)
+        try:
+            delete_project_collection(project_id)
+        except Exception:
+            pass
+        raise
+    return project
 
 
 @router.get("", response_model=List[ProjectPublic])
@@ -54,13 +70,17 @@ async def upload_document(
     with dst_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    upsert_doc(
-        project_id=project_id,
-        doc_id=doc_id,
-        filename=safe_name,
-        status="uploaded",
-        ingested=False,
-    )
+    try:
+        upsert_doc(
+            project_id=project_id,
+            doc_id=doc_id,
+            filename=safe_name,
+            status="uploaded",
+            ingested=False,
+        )
+    except Exception:
+        dst_path.unlink(missing_ok=True)
+        raise
     return {
         "ok": True,
         "project_id": project_id,

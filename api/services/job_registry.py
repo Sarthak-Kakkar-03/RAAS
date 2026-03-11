@@ -22,6 +22,11 @@ def init_jobs_registry() -> None:
                 updated_at TEXT NOT NULL
             )
             """)
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_jobs_one_active_per_project
+            ON jobs(project_id)
+            WHERE status IN ('queued', 'running')
+            """)
 
 
 def create_job(
@@ -78,9 +83,6 @@ def update_job(
     fields.append("updated_at=?")
     params.append(datetime.now(timezone.utc).isoformat())
 
-    if not fields:
-        return
-
     params.append(job_id)
     with get_conn() as conn:
         conn.execute(
@@ -119,3 +121,22 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
     if row["result_json"]:
         job["result"] = json.loads(row["result_json"])
     return job
+
+
+def get_active_job(project_id: str) -> Optional[Dict[str, Any]]:
+    init_jobs_registry()
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT job_id, project_id, status, created_at, started_at, finished_at, error, result_json
+            FROM jobs
+            WHERE project_id=? AND status IN ('queued', 'running')
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (project_id,),
+        ).fetchone()
+
+    if not row:
+        return None
+    return get_job(row["job_id"])
