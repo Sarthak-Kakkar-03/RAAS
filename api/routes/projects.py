@@ -1,20 +1,21 @@
-import time
 import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Header, UploadFile, File
-from pathlib import Path
 import shutil
-import uuid
-import time
+from dataclasses import asdict
 
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
-from api.core.store import PROJECTS
 from api.core.auth import require_project_key
-from api.services.chroma_repo import get_or_create_project_collection
+from api.services.chroma_repo import (
+    delete_project_collection,
+    get_or_create_project_collection,
+)
 from api.core.config import RAW_DIR
-from api.core.docs_store import DOCS
-from api.models.schemas import DocumentOut
+from api.services.doc_registry import list_docs, upsert_doc
+from api.services.project_registry import create_project as create_project_record
+from api.services.project_registry import delete_project as delete_project_record
+from api.services.project_registry import list_projects as list_project_records
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -23,16 +24,26 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 def create_project(body: ProjectCreate):
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
-    proj = ProjectOut(id=project_id, name=body.name, api_key=api_key)
-    # Create Chroma collection first - if this fails, don't store the project
-    get_or_create_project_collection(project_id)
-    PROJECTS[project_id] = proj
-    return proj
+    project = create_project_record(
+        project_id=project_id,
+        name=body.name,
+        api_key=api_key,
+    )
+    try:
+        get_or_create_project_collection(project_id)
+    except Exception:
+        delete_project_record(project_id)
+        try:
+            delete_project_collection(project_id)
+        except Exception:
+            pass
+        raise
+    return project
 
 
 @router.get("", response_model=List[ProjectPublic])
 def list_projects():
-    return [ProjectPublic(id=proj.id, name=proj.name) for proj in PROJECTS.values()]
+    return list_project_records()
 
 
 UPLOAD_FILE = File(...)
@@ -59,16 +70,26 @@ async def upload_document(
     with dst_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    meta = {
+    try:
+        upsert_doc(
+            project_id=project_id,
+            doc_id=doc_id,
+            filename=safe_name,
+            status="uploaded",
+            ingested=False,
+        )
+    except Exception:
+        dst_path.unlink(missing_ok=True)
+        raise
+    return {
+        "ok": True,
+        "project_id": project_id,
         "doc_id": doc_id,
         "filename": safe_name,
         "path": str(dst_path),
         "bytes": dst_path.stat().st_size,
-        "uploaded_at": time.time(),
-        "indexed": False,
+        "ingested": False,
     }
-    DOCS.setdefault(project_id, []).append(meta)
-    return {"ok": True, "project_id": project_id, **meta}
 
 
 @router.get("/{project_id}/documents")
@@ -77,4 +98,4 @@ def list_documents(
     authorization: Optional[str] = Header(default=None),
 ):
     require_project_key(project_id, authorization)
-    return {"documents": DOCS.get(project_id, [])}
+    return {"documents": [asdict(doc) for doc in list_docs(project_id)]}

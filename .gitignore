@@ -3,3 +3,4 @@ __pycache__/*
 .pre-commit-cache/
 uv.lock
 .env
+data

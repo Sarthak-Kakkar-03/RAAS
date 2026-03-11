@@ -40,3 +40,25 @@ class DocumentOut(BaseModel):
     bytes: int
     uploaded_at: float
     indexed: bool = False
+
+
+class IngestedDocOut(BaseModel):
+    doc_id: str
+    filename: str
+    num_chunks: int
+
+
+class IngestFailedDocOut(BaseModel):
+    doc_id: str
+    filename: str
+    error: str
+
+
+class IngestBatchOut(BaseModel):
+    ok: bool
+    project_id: str
+    processed: int
+    ingested_count: int
+    failed_count: int
+    ingested: List[IngestedDocOut]
+    failed: List[IngestFailedDocOut]

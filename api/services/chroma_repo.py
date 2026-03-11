@@ -92,6 +92,9 @@ class ChromaRepo:
         col = self.collection(project_id)
         return col.count()
 
+    def delete_collection(self, project_id: str) -> None:
+        self._client.delete_collection(name=self.collection_name(project_id))
+
 
 def heartbeat() -> bool:
     return ChromaRepo().heartbeat()
@@ -99,3 +102,7 @@ def heartbeat() -> bool:
 
 def get_or_create_project_collection(project_id: str) -> Collection:
     return ChromaRepo().collection(project_id)
+
+
+def delete_project_collection(project_id: str) -> None:
+    ChromaRepo().delete_collection(project_id)
