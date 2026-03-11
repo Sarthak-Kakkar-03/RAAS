@@ -2,10 +2,9 @@ import logging
 import sqlite3
 import time
 import uuid
-from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from api.core.auth import require_project_key
+from api.core.auth import get_bearer_token, require_project_key
 from api.services.job_registry import (
     create_job,
     get_active_job,
@@ -49,9 +48,9 @@ def _run_index_job(job_id: str, project_id: str) -> None:
 def start_index_job(
     project_id: str,
     background_tasks: BackgroundTasks,
-    authorization: Optional[str] = Header(default=None),
+    token: str = Depends(get_bearer_token),
 ):
-    require_project_key(project_id, authorization)
+    require_project_key(project_id, token)
 
     active_job = get_active_job(project_id)
     if active_job:
@@ -83,9 +82,9 @@ def start_index_job(
 
 
 @router.get("/jobs/{job_id}")
-def job_status(job_id: str, authorization: Optional[str] = Header(default=None)):
+def job_status(job_id: str, token: str = Depends(get_bearer_token)):
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    require_project_key(job["project_id"], authorization)
+    require_project_key(job["project_id"], token)
     return job

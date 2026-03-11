@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from api.core.auth import require_project_key
+from api.core.auth import get_bearer_token, require_project_key
 from api.models.schemas import QueryIn, QueryOut
 from api.services.retrieval_service import retrieve
 
@@ -15,10 +14,10 @@ router = APIRouter(prefix="/projects/{project_id}", tags=["query"])
 def query_project(
     project_id: str,
     body: QueryIn,
-    authorization: Optional[str] = Header(default=None),
+    token: str = Depends(get_bearer_token),
 ):
     try:
-        require_project_key(project_id, authorization)
+        require_project_key(project_id, token)
         t0 = time.time()
         hits = retrieve(
             project_id=project_id,
