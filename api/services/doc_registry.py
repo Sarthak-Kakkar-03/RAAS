@@ -45,14 +45,20 @@ def init_registry() -> None:
         PRIMARY KEY (project_id, doc_id)
     )
     """)
+import sqlite3
+
         columns = {
             row["name"]
             for row in conn.execute("PRAGMA table_info(documents)").fetchall()
         }
         if "ingested" not in columns:
-            conn.execute(
-                "ALTER TABLE documents ADD COLUMN ingested INTEGER NOT NULL DEFAULT 0 CHECK (ingested IN (0, 1))"
-            )
+            try:
+                conn.execute(
+                    "ALTER TABLE documents ADD COLUMN ingested INTEGER NOT NULL DEFAULT 0 CHECK (ingested IN (0, 1))"
+                )
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name: ingested" not in str(exc).lower():
+                    raise
 
 
 def upsert_doc(
