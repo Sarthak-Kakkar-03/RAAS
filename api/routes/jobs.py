@@ -50,6 +50,18 @@ def start_index_job(
     background_tasks: BackgroundTasks,
     token: str = Depends(get_bearer_token),
 ):
+    """
+    Create and queue a new indexing job for the given project.
+    
+    Verifies access for the provided project, ensures no other active job exists for that project,
+    persists a new queued job, and schedules the job to run in the background.
+    
+    Returns:
+        dict: A payload containing `job_id` (the new job's identifier) and `status` set to `"queued"`.
+    
+    Raises:
+        HTTPException: With status 409 when an index job is already queued or running for the project.
+    """
     require_project_key(project_id, token)
 
     active_job = get_active_job(project_id)
@@ -83,6 +95,19 @@ def start_index_job(
 
 @router.get("/jobs/{job_id}")
 def job_status(job_id: str, token: str = Depends(get_bearer_token)):
+    """
+    Retrieve a job by its ID and verify access to the associated project.
+    
+    Parameters:
+        job_id (str): The identifier of the job to retrieve.
+    
+    Returns:
+        dict: The job record.
+    
+    Raises:
+        HTTPException: 404 if no job with the given ID exists.
+        HTTPException: 403 if the token does not grant access to the job's project.
+    """
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

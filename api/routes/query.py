@@ -16,6 +16,20 @@ def query_project(
     body: QueryIn,
     token: str = Depends(get_bearer_token),
 ):
+    """
+    Handle a project-specific vector search request and return retrieval results with timing and debug info.
+    
+    Parameters:
+        project_id (str): Identifier of the project to query.
+        body (QueryIn): Query payload containing `query`, `top_k`, and optional `where` filter.
+        token (str): Bearer token extracted by dependency for project authorization.
+    
+    Returns:
+        QueryOut: Object containing `results` (retrieval hits), `latency_ms` (round-trip time in milliseconds), and `retrieval_debug` (diagnostic map with `project_id` and `top_k`).
+    
+    Raises:
+        HTTPException: With status 400 if the request parameters are invalid (ValueError), with status 500 for unexpected failures, or re-raises existing HTTPException instances.
+    """
     try:
         require_project_key(project_id, token)
         t0 = time.time()

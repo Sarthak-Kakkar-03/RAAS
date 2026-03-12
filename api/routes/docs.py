@@ -13,6 +13,17 @@ def list_project_docs(
     project_id: str,
     token: str = Depends(get_bearer_token),
 ):
+    """
+    List documents for the specified project.
+    
+    Parameters:
+        project_id (str): Identifier of the project whose documents will be listed.
+    
+    Returns:
+        dict: A payload with keys:
+            - `project_id` (str): The same project identifier.
+            - `docs` (list[dict]): List of document records for the project, each represented as a dictionary.
+    """
     require_project_key(project_id, token)
     return {
         "project_id": project_id,
@@ -26,6 +37,19 @@ def get_project_doc(
     doc_id: str,
     token: str = Depends(get_bearer_token),
 ):
+    """
+    Retrieve a document record for the given project and document ID.
+    
+    Parameters:
+        project_id (str): Identifier of the project containing the document.
+        doc_id (str): Identifier of the document to retrieve.
+    
+    Returns:
+        dict: Dictionary representation of the requested document.
+    
+    Raises:
+        HTTPException: Raised with status code 404 if the document is not found.
+    """
     require_project_key(project_id, token)
     rec = get_doc(project_id, doc_id)
     if not rec:
@@ -39,6 +63,16 @@ def delete_project_doc(
     doc_id: str,
     token: str = Depends(get_bearer_token),
 ):
+    """
+    Delete a document for a project from the Chroma repository and the registry.
+    
+    Parameters:
+        project_id (str): Identifier of the project containing the document.
+        doc_id (str): Identifier of the document to delete.
+    
+    Returns:
+        dict: A success payload with keys `ok`, `project_id`, and `doc_id` confirming the deletion.
+    """
     require_project_key(project_id, token)
     # 1) delete from chroma
     ChromaRepo().delete_by_doc_id(project_id=project_id, doc_id=doc_id)
