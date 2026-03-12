@@ -1,12 +1,12 @@
 import uuid
-from typing import Optional, List
-from fastapi import APIRouter, Header, UploadFile, File
+from typing import List
+from fastapi import APIRouter, Depends, UploadFile, File
 import shutil
 from dataclasses import asdict
 
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
-from api.core.auth import require_project_key
+from api.core.auth import get_bearer_token, require_project_key
 from api.services.chroma_repo import (
     delete_project_collection,
     get_or_create_project_collection,
@@ -52,10 +52,23 @@ UPLOAD_FILE = File(...)
 @router.post("/{project_id}/documents")
 async def upload_document(
     project_id: str,
-    authorization: Optional[str] = Header(default=None),
+    token: str = Depends(get_bearer_token),
     file: UploadFile = UPLOAD_FILE,
 ):
-    require_project_key(project_id, authorization)
+    """
+    Handle uploading a document file for a project, save it to the project's raw storage directory, and register the document metadata in the document registry.
+    
+    Returns:
+        result (dict): Details about the uploaded document containing:
+            - `ok` (bool): `True` when upload and registration succeeded.
+            - `project_id` (str): ID of the project the document was uploaded to.
+            - `doc_id` (str): Generated unique document identifier.
+            - `filename` (str): Safe filename used for storage.
+            - `path` (str): Filesystem path where the file was saved.
+            - `bytes` (int): Size of the saved file in bytes.
+            - `ingested` (bool): `False` indicating the document has not been ingested yet.
+    """
+    require_project_key(project_id, token)
 
     filename = file.filename or "uploaded"
     # need a unique doc_id
@@ -95,7 +108,18 @@ async def upload_document(
 @router.get("/{project_id}/documents")
 def list_documents(
     project_id: str,
-    authorization: Optional[str] = Header(default=None),
+    token: str = Depends(get_bearer_token),
 ):
-    require_project_key(project_id, authorization)
+    """
+    Retrieve the documents registered for a project.
+    
+    Requires a valid project key provided via the injected bearer token.
+    
+    Parameters:
+        project_id (str): Project identifier whose documents should be listed.
+    
+    Returns:
+        dict: A mapping with the key "documents" to a list of document records represented as dictionaries.
+    """
+    require_project_key(project_id, token)
     return {"documents": [asdict(doc) for doc in list_docs(project_id)]}
