@@ -1,7 +1,9 @@
 import sys
 from pathlib import Path
+import os
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure `api.*` imports resolve even when launched from the `api` directory.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,8 +19,23 @@ from api.routes.query import router as query_router
 from api.routes.ingest import router as ingest_router
 
 
+def _cors_allowed_origins() -> list[str]:
+    raw_origins = os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    )
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="RaaS", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_allowed_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(health_router)
     app.include_router(projects_router)
     app.include_router(jobs_router)

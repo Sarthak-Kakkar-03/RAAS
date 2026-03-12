@@ -1,6 +1,72 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
+const HEALTH_CHECK_INTERVAL_MS = 15000;
+
+type HealthResponse = {
+  status?: string;
+  chroma_ok?: boolean;
+};
 
 export default function Home() {
+  const [isHealthy, setIsHealthy] = useState(false);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkHealth = async () => {
+      if (isMounted) {
+        setIsCheckingHealth(true);
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/health`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Health check failed");
+        }
+
+        const data = (await response.json()) as HealthResponse;
+        const healthy = data.status === "ok" && data.chroma_ok !== false;
+
+        if (isMounted) {
+          setIsHealthy(healthy);
+        }
+      } catch {
+        if (isMounted) {
+          setIsHealthy(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingHealth(false);
+        }
+      }
+    };
+
+    void checkHealth();
+    const intervalId = window.setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const statusText = isCheckingHealth
+    ? "Checking server..."
+    : isHealthy
+      ? "Server is up"
+      : "Server is down";
+  const statusClass = isHealthy ? "status-success" : "status-error";
+
   return (
     <main className="min-h-screen bg-base-200 px-6 py-12 flex items-stretch">
       <div className="mx-auto flex w-full max-w-5xl flex-col justify-evenly items-center gap-6 text-center">
@@ -48,14 +114,17 @@ export default function Home() {
         <div className="flex flex-row items-center gap-6">
           <div className="flex flex-row items-center gap-4">
             <div className="inline-grid scale-125 *:[grid-area:1/1]">
-              <div className="status status-error animate-ping"></div>
-              <div className="status status-error"></div>
+              <div className={`status ${statusClass} animate-ping`}></div>
+              <div className={`status ${statusClass}`}></div>
             </div>
-            <span className="text-lg font-semibold md:text-2xl">
-              Server is down
-            </span>
+            <span className="text-lg font-semibold md:text-2xl">{statusText}</span>
           </div>
-          <button className="btn btn-secondary btn-lg px-8 text-base md:text-lg">
+          <button
+            className={`btn btn-lg px-8 text-base md:text-lg ${
+              isHealthy ? "btn-primary" : "btn-neutral"
+            }`}
+            disabled={!isHealthy}
+          >
             Enter Site
           </button>
         </div>
