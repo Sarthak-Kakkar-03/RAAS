@@ -4,3 +4,7 @@ __pycache__/*
 uv.lock
 .env
 data
+
+
+node_modules
+.DS_Store
