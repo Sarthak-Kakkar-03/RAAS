@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const API_BASE_URL =
@@ -18,8 +19,15 @@ export default function Home() {
 
   useEffect(() => {
     let isMounted = true;
+    let controller: AbortController | null = null;
 
-    const checkHealth = async () => {
+    const runHealthCheck = async () => {
+      if (!isMounted) {
+        return;
+      }
+
+      controller = new AbortController();
+
       if (isMounted) {
         setIsCheckingHealth(true);
       }
@@ -28,6 +36,7 @@ export default function Home() {
         const response = await fetch(`${API_BASE_URL}/health`, {
           method: "GET",
           cache: "no-store",
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -40,7 +49,11 @@ export default function Home() {
         if (isMounted) {
           setIsHealthy(healthy);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         if (isMounted) {
           setIsHealthy(false);
         }
@@ -49,14 +62,23 @@ export default function Home() {
           setIsCheckingHealth(false);
         }
       }
+
+      if (!isMounted) {
+        return;
+      }
+
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, HEALTH_CHECK_INTERVAL_MS),
+      );
+
+      await runHealthCheck();
     };
 
-    void checkHealth();
-    const intervalId = window.setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+    void runHealthCheck();
 
     return () => {
       isMounted = false;
-      window.clearInterval(intervalId);
+      controller?.abort();
     };
   }, []);
 
@@ -119,14 +141,21 @@ export default function Home() {
             </div>
             <span className="text-lg font-semibold md:text-2xl">{statusText}</span>
           </div>
-          <button
-            className={`btn btn-lg px-8 text-base md:text-lg ${
-              isHealthy ? "btn-primary" : "btn-neutral"
-            }`}
-            disabled={!isHealthy}
-          >
-            Enter Site
-          </button>
+          {isHealthy ? (
+            <Link
+              href="/app"
+              className="btn btn-primary btn-lg px-8 text-base md:text-lg"
+            >
+              Enter Site
+            </Link>
+          ) : (
+            <button
+              className="btn btn-neutral btn-lg px-8 text-base md:text-lg"
+              disabled
+            >
+              Enter Site
+            </button>
+          )}
         </div>
       </div>
     </main>
