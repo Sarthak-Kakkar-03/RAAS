@@ -63,15 +63,215 @@ export default function AppPage() {
     };
   }, []);
   return (
-    <main className="min-h-screen bg-base-200 px-6 py-12">
-      <div className="mx-auto flex min-h-[70vh] max-w-4xl flex-col items-center justify-center gap-4 text-center">
-        <h1 className="text-4xl font-bold text-base-content md:text-5xl">
-          RAAS App
-        </h1>
-        <p className="max-w-2xl text-base text-base-content/75 md:text-lg">
-          This is a basic placeholder for the main application area.
-        </p>
+    <main className="min-h-screen bg-base-200 px-8 py-12 stretch gap-8 items-stretch flex flex-col justify-center">
+      <div className="flex justify-center">
+        <h1 className="font-extrabold text-4xl text-primary">
+        List Of Projects
+      </h1>
       </div>
+      <ul className="list bg-base-100 rounded-box shadow-md flex flex-1 max-h-105 overflow-y-auto">
+        <li className="p-4 pb-2 text-xs opacity-60 tracking-wide">
+          Most played songs this week
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">01</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/1@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Dio Lupa</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Remaining Reason
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">02</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/4@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Ellie Beilish</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Bears of a fever
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">03</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/3@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Sabrino Gardener</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Cappuccino
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">04</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/1@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Dio Lupa</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Remaining Reason
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">05</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/4@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Ellie Beilish</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Bears of a fever
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+
+        <li className="list-row">
+          <div className="text-4xl font-thin opacity-30 tabular-nums">06</div>
+          <div>
+            <img
+              className="size-10 rounded-box"
+              src="https://img.daisyui.com/images/profile/demo/3@94.webp"
+            />
+          </div>
+          <div className="list-col-grow">
+            <div>Sabrino Gardener</div>
+            <div className="text-xs uppercase font-semibold opacity-60">
+              Cappuccino
+            </div>
+          </div>
+          <button className="btn btn-square btn-ghost">
+            <svg
+              className="size-[1.2em]"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <g
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                strokeWidth="2"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path d="M6 3L20 12 6 21 6 3z"></path>
+              </g>
+            </svg>
+          </button>
+        </li>
+        </ul>
     </main>
   );
 }
