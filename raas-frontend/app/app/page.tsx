@@ -23,6 +23,13 @@ export default function AppPage() {
     useState<ProjectPrivateInfo | null>(null);
   const [createModalError, setCreateModalError] = useState("");
   const [createButtonActive, setCreateButtonActive] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteProjectId, setDeleteProjectId] = useState("");
+  const [deleteProjectApiKey, setDeleteProjectApiKey] = useState("");
+  const [deleteModalError, setDeleteModalError] = useState("");
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
+  const [deletedProjectId, setDeletedProjectId] = useState("");
+  const [deleteButtonActive, setDeleteButtonActive] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -98,6 +105,25 @@ export default function AppPage() {
     setSelectedProject(project);
     setProjectApiKey("");
     setModalError("");
+  }
+
+  function openDeleteModal() {
+    setDeleteProjectId("");
+    setDeleteProjectApiKey("");
+    setDeleteModalError("");
+    setDeletedProjectId("");
+    setDeleteButtonActive(true);
+    setDeleteModalOpen(true);
+  }
+
+  function closeDeleteModal() {
+    setDeleteProjectId("");
+    setDeleteProjectApiKey("");
+    setDeleteModalError("");
+    setDeletedProjectId("");
+    setIsDeletingProject(false);
+    setDeleteButtonActive(false);
+    setDeleteModalOpen(false);
   }
 
   function closeProjectModal() {
@@ -193,6 +219,58 @@ export default function AppPage() {
     }
   }
 
+  async function handleDeleteProject() {
+    if (!deleteProjectId.trim()) {
+      setDeleteModalError("Enter project ID.");
+      return;
+    }
+
+    if (!deleteProjectApiKey.trim()) {
+      setDeleteModalError("Enter project API key.");
+      return;
+    }
+
+    setDeleteModalError("");
+    setDeletedProjectId("");
+    setIsDeletingProject(true);
+    setDeleteButtonActive(true);
+
+    try {
+      const projectId = deleteProjectId.trim();
+
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${deleteProjectApiKey.trim()}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as {
+          detail?: string;
+        } | null;
+        throw new Error(errorBody?.detail ?? "Project deletion failed");
+      }
+
+      setProjects((currentProjects) =>
+        currentProjects.filter((project) => project.id !== projectId),
+      );
+      setDeletedProjectId(projectId);
+      setDeleteProjectId("");
+      setDeleteProjectApiKey("");
+      setReceivedProjectList(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        setDeleteModalError(error.message);
+      } else {
+        setDeleteModalError("Could not delete project.");
+      }
+    } finally {
+      setIsDeletingProject(false);
+      setDeleteButtonActive(false);
+    }
+  }
+
   function renderProjectModal() {
     if (!selectedProject) {
       return null;
@@ -284,7 +362,7 @@ export default function AppPage() {
 
           <div className="modal-action">
             <button className="btn btn-ghost" onClick={closeCreateModal}>
-              Cancel
+              {createdNewProject ? "Close" : "Cancel"}
             </button>
             <button
               className={`btn btn-success ${createButtonActive ? "btn-active" : "btn-disabled"}`}
@@ -298,6 +376,75 @@ export default function AppPage() {
           className="modal-backdrop"
           aria-label="Close create project modal"
           onClick={closeCreateModal}
+        />
+      </div>
+    );
+  }
+
+  function renderDeleteModal() {
+    if (!deleteModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box gap-5">
+          <h1 className="font-bold text-lg">Delete Project</h1>
+          <p className="mt-2 text-sm opacity-70">
+            Enter the project ID and API key to permanently delete a project.
+          </p>
+
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Project ID</span>
+            <input
+              type="text"
+              className="input input-bordered mt-2 w-full"
+              value={deleteProjectId}
+              onChange={(event) => setDeleteProjectId(event.target.value)}
+              placeholder="Enter project ID"
+            />
+          </label>
+
+          <label className="form-control mt-4 w-full">
+            <span className="label-text font-semibold">Project API key</span>
+            <input
+              type="password"
+              className="input input-bordered mt-2 w-full"
+              value={deleteProjectApiKey}
+              onChange={(event) => setDeleteProjectApiKey(event.target.value)}
+              placeholder="Enter project API key"
+            />
+          </label>
+
+          {deleteModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {deleteModalError}
+            </p>
+          ) : null}
+
+          {deletedProjectId ? (
+            <p className="mt-3 text-sm font-medium text-success">
+              Deleted project {deletedProjectId}.
+            </p>
+          ) : null}
+
+          <div className="modal-action">
+            <button className="btn btn-ghost" onClick={closeDeleteModal}>
+              {deletedProjectId ? "Close" : "Cancel"}
+            </button>
+            <button
+              className={`btn btn-error ${deleteButtonActive ? "btn-active" : "btn-disabled"}`}
+              onClick={handleDeleteProject}
+              disabled={isDeletingProject}
+            >
+              {isDeletingProject ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close delete project modal"
+          onClick={closeDeleteModal}
         />
       </div>
     );
@@ -367,7 +514,10 @@ export default function AppPage() {
           >
             Create Project
           </button>
-          <button className="btn btn-error btn-ghost btn-lg font-bold btn-outline">
+          <button
+            className="btn btn-error btn-ghost btn-lg font-bold btn-outline"
+            onClick={openDeleteModal}
+          >
             Delete Project
           </button>
         </div>
@@ -375,6 +525,7 @@ export default function AppPage() {
 
       {renderProjectModal()}
       {renderCreateModal()}
+      {renderDeleteModal()}
     </main>
   );
 }
