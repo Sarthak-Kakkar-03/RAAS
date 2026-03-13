@@ -1,11 +1,13 @@
 "use client";
-import { ProjectPublicInfo } from "@/types/api";
+
+import type { ProjectPublicInfo } from "@/types/api";
 import { useEffect, useState } from "react";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
 
 export default function AppPage() {
-  const [, setProjects] = useState<ProjectPublicInfo[]>([]);
+  const [projects, setProjects] = useState<ProjectPublicInfo[]>([]);
   const [receivedProjectList, setReceivedProjectList] = useState(false);
   const [requestingProjectList, setIsRequestingProjectList] = useState(true);
 
@@ -62,216 +64,64 @@ export default function AppPage() {
       controller?.abort();
     };
   }, []);
+
   return (
-    <main className="min-h-screen bg-base-200 px-8 py-12 stretch gap-8 items-stretch flex flex-col justify-center">
-      <div className="flex justify-center">
-        <h1 className="font-extrabold text-4xl text-primary">
-        List Of Projects
-      </h1>
-      </div>
-      <ul className="list bg-base-100 rounded-box shadow-md flex flex-1 max-h-105 overflow-y-auto">
-        <li className="p-4 pb-2 text-xs opacity-60 tracking-wide">
-          Most played songs this week
-        </li>
+    <main className="min-h-screen bg-base-200 px-8 py-12">
+      <div className="mx-auto flex max-w-4xl flex-col gap-8">
+        <div className="flex justify-center">
+          <h1 className="text-4xl font-extrabold text-primary">
+            List Of Projects
+          </h1>
+        </div>
 
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">01</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/1@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Dio Lupa</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Remaining Reason
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
+        <ul className="list rounded-box bg-base-100 shadow-md max-h-[420px] overflow-y-auto">
+          <li className="p-4 pb-2 text-xs tracking-wide opacity-60">
+            {requestingProjectList
+              ? "Loading projects..."
+              : receivedProjectList
+                ? `${projects.length} projects found`
+                : "Could not load projects"}
+          </li>
 
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">02</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/4@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Ellie Beilish</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Bears of a fever
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
-
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">03</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/3@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Sabrino Gardener</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Cappuccino
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
-
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">04</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/1@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Dio Lupa</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Remaining Reason
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
-
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">05</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/4@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Ellie Beilish</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Bears of a fever
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
-
-        <li className="list-row">
-          <div className="text-4xl font-thin opacity-30 tabular-nums">06</div>
-          <div>
-            <img
-              className="size-10 rounded-box"
-              src="https://img.daisyui.com/images/profile/demo/3@94.webp"
-            />
-          </div>
-          <div className="list-col-grow">
-            <div>Sabrino Gardener</div>
-            <div className="text-xs uppercase font-semibold opacity-60">
-              Cappuccino
-            </div>
-          </div>
-          <button className="btn btn-square btn-ghost">
-            <svg
-              className="size-[1.2em]"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-            >
-              <g
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                strokeWidth="2"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path d="M6 3L20 12 6 21 6 3z"></path>
-              </g>
-            </svg>
-          </button>
-        </li>
+          {projects.map((project, index) => (
+            <li key={project.id} className="list-row">
+              <div className="text-4xl font-thin tabular-nums opacity-30">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-box bg-primary/10 font-semibold text-primary">
+                {project.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="list-col-grow">
+                <div className="text-xl">{project.name}</div>
+                <div className="text-xs font-semibold uppercase opacity-60">
+                  ID: {project.id}
+                </div>
+              </div>
+              <button className="btn btn-square btn-ghost btn-primary" aria-label="Resume project">
+                <svg
+                  className="size-[1.2em]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                >
+                  <g
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M6 3L20 12 6 21 6 3z"></path>
+                  </g>
+                </svg>
+              </button>
+            </li>
+          ))}
         </ul>
+        <div className="flex justify-evenly">
+          <button className="btn btn-success font-bold btn-ghost btn-outline btn-lg">Create Project</button>
+          <button className="btn btn-error font-bold btn-ghost btn-outline btn-lg">Delete Project</button>
+        </div>
+      </div>
     </main>
   );
 }
