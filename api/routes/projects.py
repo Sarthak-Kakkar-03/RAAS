@@ -57,7 +57,7 @@ async def upload_document(
 ):
     """
     Handle uploading a document file for a project, save it to the project's raw storage directory, and register the document metadata in the document registry.
-    
+
     Returns:
         result (dict): Details about the uploaded document containing:
             - `ok` (bool): `True` when upload and registration succeeded.
@@ -112,14 +112,26 @@ def list_documents(
 ):
     """
     Retrieve the documents registered for a project.
-    
+
     Requires a valid project key provided via the injected bearer token.
-    
+
     Parameters:
         project_id (str): Project identifier whose documents should be listed.
-    
+
     Returns:
         dict: A mapping with the key "documents" to a list of document records represented as dictionaries.
     """
     require_project_key(project_id, token)
     return {"documents": [asdict(doc) for doc in list_docs(project_id)]}
+
+
+@router.get("/{project_id}/validate")
+def validate_project(
+    project_id: str,
+    token: str = Depends(get_bearer_token),
+):
+    try:
+        require_project_key(project_id=project_id, token=token)
+        return True
+    except Exception:
+        return False
