@@ -3,15 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { HealthResponse } from "@/types/api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
 const HEALTH_CHECK_INTERVAL_MS = 15000;
-
-type HealthResponse = {
-  status?: string;
-  chroma_ok?: boolean;
-};
 
 export default function Home() {
   const [isHealthy, setIsHealthy] = useState(false);
@@ -139,7 +135,9 @@ export default function Home() {
               <div className={`status ${statusClass} animate-ping`}></div>
               <div className={`status ${statusClass}`}></div>
             </div>
-            <span className="text-lg font-semibold md:text-2xl">{statusText}</span>
+            <span className="text-lg font-semibold md:text-2xl">
+              {statusText}
+            </span>
           </div>
           {isHealthy ? (
             <Link
