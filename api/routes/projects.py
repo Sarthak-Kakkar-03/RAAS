@@ -12,7 +12,11 @@ from api.services.chroma_repo import (
     get_or_create_project_collection,
 )
 from api.core.config import RAW_DIR
-from api.services.doc_registry import list_docs, upsert_doc
+from api.services.doc_registry import (
+    delete_docs_for_project,
+    list_docs,
+    upsert_doc,
+)
 from api.services.project_registry import create_project as create_project_record
 from api.services.project_registry import delete_project as delete_project_record
 from api.services.project_registry import list_projects as list_project_records
@@ -135,3 +139,22 @@ def validate_project(
         return True
     except Exception:
         return False
+
+
+@router.delete("/{project_id}")
+def delete_project(
+    project_id: str,
+    token: str = Depends(get_bearer_token),
+):
+    require_project_key(project_id=project_id, token=token)
+
+    try:
+        delete_project_collection(project_id)
+    except Exception:
+        pass
+
+    delete_docs_for_project(project_id)
+    delete_project_record(project_id)
+    shutil.rmtree(RAW_DIR / project_id, ignore_errors=True)
+
+    return {"ok": True, "project_id": project_id}

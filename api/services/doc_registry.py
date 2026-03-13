@@ -128,3 +128,12 @@ def delete_doc(project_id: str, doc_id: str) -> None:
             "DELETE FROM documents WHERE project_id=? AND doc_id=?",
             (project_id, doc_id),
         )
+
+
+def delete_docs_for_project(project_id: str) -> None:
+    init_registry()
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM documents WHERE project_id=?",
+            (project_id,),
+        )
