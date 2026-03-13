@@ -10,3 +10,9 @@ export type ProjectPublicInfo = {
   id: string;
   name: string;
 };
+
+export type ProjectPrivateInfo = {
+  id: string;
+  name: string;
+  api_key: string;
+};

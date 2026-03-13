@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProjectPublicInfo } from "@/types/api";
+import type { ProjectPrivateInfo, ProjectPublicInfo } from "@/types/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -17,6 +17,12 @@ export default function AppPage() {
   const [projectApiKey, setProjectApiKey] = useState("");
   const [isValidatingProject, setIsValidatingProject] = useState(false);
   const [modalError, setModalError] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createProjectName, setCreateProjectName] = useState("");
+  const [createdNewProject, setCreatedNewProject] =
+    useState<ProjectPrivateInfo | null>(null);
+  const [createModalError, setCreateModalError] = useState("");
+  const [createButtonActive, setCreateButtonActive] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -71,6 +77,22 @@ export default function AppPage() {
       controller?.abort();
     };
   }, []);
+
+  function openCreateModal() {
+    setCreateModalError("");
+    setCreateProjectName("");
+    setCreatedNewProject(null);
+    setCreateModalOpen(true);
+    setCreateButtonActive(true);
+  }
+
+  function closeCreateModal() {
+    setCreateModalError("");
+    setCreateProjectName("");
+    setCreatedNewProject(null);
+    setCreateModalOpen(false);
+    setCreateButtonActive(false);
+  }
 
   function openProjectModal(project: ProjectPublicInfo) {
     setSelectedProject(project);
@@ -132,6 +154,155 @@ export default function AppPage() {
     }
   }
 
+  async function handleCreateProject() {
+    if (!createProjectName.trim()) {
+      setCreateModalError("Add project name!");
+      return;
+    }
+
+    setCreateModalError("");
+    setCreatedNewProject(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: createProjectName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Project creation failed");
+      }
+
+      const projectDetails = (await response.json()) as ProjectPrivateInfo;
+      setCreatedNewProject(projectDetails);
+      setProjects((currentProjects) => [
+        ...currentProjects,
+        { id: projectDetails.id, name: projectDetails.name },
+      ]);
+      setReceivedProjectList(true);
+      setCreateProjectName("");
+    } catch {
+      setCreateModalError("Could not create project.");
+    } finally {
+      setCreateButtonActive(false);
+    }
+  }
+
+  function renderProjectModal() {
+    if (!selectedProject) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open">
+        <div className="modal-box">
+          <h2 className="text-2xl font-bold">{selectedProject.name}</h2>
+          <p className="mt-2 text-sm opacity-70">ID: {selectedProject.id}</p>
+
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Project API key</span>
+            <input
+              type="password"
+              className="input input-bordered mt-2 w-full"
+              value={projectApiKey}
+              onChange={(event) => setProjectApiKey(event.target.value)}
+              placeholder="Enter API key"
+            />
+          </label>
+
+          {modalError ? (
+            <p className="mt-3 text-sm font-medium text-error">{modalError}</p>
+          ) : null}
+
+          <div className="modal-action">
+            <button className="btn btn-ghost" onClick={closeProjectModal}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleProjectOpen}
+              disabled={isValidatingProject}
+            >
+              {isValidatingProject ? "Checking..." : "Open Documents"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close modal"
+          onClick={closeProjectModal}
+        />
+      </div>
+    );
+  }
+
+  function renderCreateModal() {
+    if (!createModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box">
+          <h1 className="font-bold text-lg">Create Project</h1>
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Project Name</span>
+            <input
+              type="text"
+              className="input input-bordered mt-2 w-full"
+              value={createProjectName}
+              onChange={(event) => setCreateProjectName(event.target.value)}
+              placeholder="Add project name to create"
+            />
+          </label>
+
+          {createModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {createModalError}
+            </p>
+          ) : null}
+
+          {createdNewProject ? (
+            <div className="mt-4 rounded-box bg-success/10 p-4 text-sm">
+              <p className="font-semibold text-success">
+                Project created successfully.
+              </p>
+              <p className="mt-2 font-medium text-warning">
+                Copy the API key before closing this modal. It will not be shown
+                again and cannot be recovered later.
+              </p>
+              <p className="mt-2">Name: {createdNewProject.name}</p>
+              <p>ID: {createdNewProject.id}</p>
+              <p>API Key: {createdNewProject.api_key}</p>
+            </div>
+          ) : null}
+
+          <div className="modal-action">
+            <button className="btn btn-ghost" onClick={closeCreateModal}>
+              Cancel
+            </button>
+            <button
+              className={`btn btn-success ${createButtonActive ? "btn-active" : "btn-disabled"}`}
+              onClick={handleCreateProject}
+            >
+              Create
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close create project modal"
+          onClick={closeCreateModal}
+        />
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-base-200 px-8 py-12">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
@@ -190,7 +361,10 @@ export default function AppPage() {
         </ul>
 
         <div className="flex justify-evenly">
-          <button className="btn btn-success btn-ghost btn-lg font-bold btn-outline">
+          <button
+            className="btn btn-success btn-ghost btn-lg font-bold btn-outline"
+            onClick={() => openCreateModal()}
+          >
             Create Project
           </button>
           <button className="btn btn-error btn-ghost btn-lg font-bold btn-outline">
@@ -199,47 +373,8 @@ export default function AppPage() {
         </div>
       </div>
 
-      {selectedProject ? (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h2 className="text-2xl font-bold">{selectedProject.name}</h2>
-            <p className="mt-2 text-sm opacity-70">ID: {selectedProject.id}</p>
-
-            <label className="form-control mt-6 w-full">
-              <span className="label-text font-semibold">Project API key</span>
-              <input
-                type="password"
-                className="input input-bordered mt-2 w-full"
-                value={projectApiKey}
-                onChange={(event) => setProjectApiKey(event.target.value)}
-                placeholder="Enter API key"
-              />
-            </label>
-
-            {modalError ? (
-              <p className="mt-3 text-sm font-medium text-error">{modalError}</p>
-            ) : null}
-
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={closeProjectModal}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleProjectOpen}
-                disabled={isValidatingProject}
-              >
-                {isValidatingProject ? "Checking..." : "Open Documents"}
-              </button>
-            </div>
-          </div>
-          <button
-            className="modal-backdrop"
-            aria-label="Close modal"
-            onClick={closeProjectModal}
-          />
-        </div>
-      ) : null}
+      {renderProjectModal()}
+      {renderCreateModal()}
     </main>
   );
 }
