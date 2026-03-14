@@ -2,6 +2,7 @@ from api.services.embedder import embed_chunks, embed_query
 
 
 def main() -> None:
+    """Run a small manual embedding smoke test from the command line."""
     chunks = [
         "LangChain is a framework for building context-aware applications.",
         "This is another chunk to embed.",

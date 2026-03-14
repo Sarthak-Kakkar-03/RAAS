@@ -10,6 +10,7 @@ def _sanitize(text: str) -> str:
 
 
 def build_embedder(model: str | None = None) -> OpenAIEmbeddings:
+    """Construct the configured OpenAI embeddings client."""
     api_key = settings.openai_api_key.get_secret_value().strip()
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set")
@@ -21,6 +22,7 @@ def build_embedder(model: str | None = None) -> OpenAIEmbeddings:
 
 
 def embed_chunks(chunks: Sequence[str], model: str | None = None) -> List[List[float]]:
+    """Embed a sequence of non-empty text chunks into vectors."""
     cleaned = [_sanitize(c) for c in chunks]
     cleaned = [c for c in cleaned if c]
     if not cleaned:
@@ -31,6 +33,7 @@ def embed_chunks(chunks: Sequence[str], model: str | None = None) -> List[List[f
 
 
 def embed_query(query: str, model: str | None = None) -> List[float]:
+    """Embed a single query string into a vector."""
     q = _sanitize(query)
     if not q:
         raise ValueError("cant embed empty query")

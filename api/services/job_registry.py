@@ -8,6 +8,7 @@ from api.core.db import get_conn
 
 
 def init_jobs_registry() -> None:
+    """Create the jobs table and enforce one active job per project."""
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
@@ -32,6 +33,7 @@ def init_jobs_registry() -> None:
 def create_job(
     *, job_id: str, project_id: str, status: str = "queued"
 ) -> Dict[str, Any]:
+    """Persist a new job record and return its public fields."""
     init_jobs_registry()
     created_at = datetime.now(timezone.utc).timestamp()
     updated_at = datetime.now(timezone.utc).isoformat()
@@ -60,6 +62,7 @@ def update_job(
     error: Optional[str] = None,
     result: Optional[Dict[str, Any]] = None,
 ) -> None:
+    """Update mutable fields on an existing job record."""
     init_jobs_registry()
 
     fields = []
@@ -92,6 +95,7 @@ def update_job(
 
 
 def get_job(job_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch a job by id and deserialize its stored result payload."""
     init_jobs_registry()
     with get_conn() as conn:
         row = conn.execute(
@@ -124,6 +128,7 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_active_job(project_id: str) -> Optional[Dict[str, Any]]:
+    """Return the queued or running job for a project, if one exists."""
     init_jobs_registry()
     with get_conn() as conn:
         row = conn.execute(

@@ -20,6 +20,7 @@ from api.routes.ingest import router as ingest_router
 
 
 def _cors_allowed_origins() -> list[str]:
+    """Parse the configured comma-separated CORS origins list."""
     raw_origins = os.getenv(
         "CORS_ALLOWED_ORIGINS",
         "http://localhost:3000,http://127.0.0.1:3000",
@@ -28,6 +29,7 @@ def _cors_allowed_origins() -> list[str]:
 
 
 def create_app() -> FastAPI:
+    """Build and configure the FastAPI application instance."""
     app = FastAPI(title="RaaS", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,

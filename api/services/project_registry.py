@@ -18,6 +18,7 @@ _secret_warning_logged = False
 
 
 def _digest_api_key(api_key: str) -> str:
+    """Hash a raw project API key using the configured HMAC secret."""
     digest = hmac.new(
         _API_KEY_SECRET.encode("utf-8"),
         api_key.encode("utf-8"),
@@ -27,6 +28,7 @@ def _digest_api_key(api_key: str) -> str:
 
 
 def init_projects_registry() -> None:
+    """Create the projects table and migrate any plain-text API keys."""
     global _secret_warning_logged
     if _API_KEY_SECRET == _DEFAULT_API_KEY_SECRET and not _secret_warning_logged:
         _logger.warning(
@@ -56,6 +58,7 @@ def init_projects_registry() -> None:
 
 
 def create_project(*, project_id: str, name: str, api_key: str) -> ProjectOut:
+    """Persist a new project and return its one-time plain API key."""
     init_projects_registry()
     created_at = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
@@ -70,6 +73,7 @@ def create_project(*, project_id: str, name: str, api_key: str) -> ProjectOut:
 
 
 def get_project(project_id: str) -> Optional[ProjectPublic]:
+    """Return the public project record for a project id, if present."""
     init_projects_registry()
     with get_conn() as conn:
         row = conn.execute(
@@ -82,6 +86,7 @@ def get_project(project_id: str) -> Optional[ProjectPublic]:
 
 
 def list_projects() -> List[ProjectPublic]:
+    """List public projects ordered by most recent creation time."""
     init_projects_registry()
     with get_conn() as conn:
         rows = conn.execute(
@@ -91,6 +96,7 @@ def list_projects() -> List[ProjectPublic]:
 
 
 def verify_project_api_key(project_id: str, api_key: str) -> bool:
+    """Check whether a raw API key matches the stored digest for a project."""
     init_projects_registry()
     with get_conn() as conn:
         row = conn.execute(
@@ -105,6 +111,7 @@ def verify_project_api_key(project_id: str, api_key: str) -> bool:
 
 
 def delete_project(project_id: str) -> None:
+    """Delete a project record from the registry."""
     init_projects_registry()
     with get_conn() as conn:
         conn.execute("DELETE FROM projects WHERE id=?", (project_id,))

@@ -3,6 +3,7 @@ from pathlib import Path
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
+    """Extract and concatenate plain text from every page of a PDF."""
     doc = pymupdf.open(pdf_path)
     try:
         parts: list[str] = []

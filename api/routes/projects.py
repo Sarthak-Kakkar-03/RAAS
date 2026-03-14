@@ -26,6 +26,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 @router.post("", response_model=ProjectOut)
 def create_project(body: ProjectCreate):
+    """Create a project and provision its backing Chroma collection."""
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
     project = create_project_record(
@@ -47,6 +48,7 @@ def create_project(body: ProjectCreate):
 
 @router.get("", response_model=List[ProjectPublic])
 def list_projects():
+    """List public project records ordered by creation time."""
     return list_project_records()
 
 
@@ -134,6 +136,7 @@ def validate_project(
     project_id: str,
     token: str = Depends(get_bearer_token),
 ):
+    """Check whether the provided bearer token is valid for the project."""
     try:
         require_project_key(project_id=project_id, token=token)
         return {"valid": True}
@@ -146,6 +149,7 @@ def delete_project(
     project_id: str,
     token: str = Depends(get_bearer_token),
 ):
+    """Delete a project and its associated storage after authorization."""
     require_project_key(project_id=project_id, token=token)
 
     try:
