@@ -16,3 +16,14 @@ export type ProjectPrivateInfo = {
   name: string;
   api_key: string;
 };
+
+export type DocumentInfo = {
+  project_id: string;
+  doc_id: string;
+  filename: string;
+  status: string;
+  ingested: boolean;
+  num_chunks: number;
+  created_at: string;
+  error: string | null;
+};
