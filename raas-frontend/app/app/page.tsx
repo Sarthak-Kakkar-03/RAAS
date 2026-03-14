@@ -1,6 +1,8 @@
 "use client";
 
 import type { ProjectPrivateInfo, ProjectPublicInfo } from "@/types/api";
+import { validateProjectKey } from "@/app/utils/projectValidation";
+import ValidationModal from "@/app/utils/validationModal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -14,9 +16,6 @@ export default function AppPage() {
   const [requestingProjectList, setIsRequestingProjectList] = useState(true);
   const [selectedProject, setSelectedProject] =
     useState<ProjectPublicInfo | null>(null);
-  const [projectApiKey, setProjectApiKey] = useState("");
-  const [isValidatingProject, setIsValidatingProject] = useState(false);
-  const [modalError, setModalError] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createProjectName, setCreateProjectName] = useState("");
   const [createdNewProject, setCreatedNewProject] =
@@ -104,8 +103,6 @@ export default function AppPage() {
 
   function openProjectModal(project: ProjectPublicInfo) {
     setSelectedProject(project);
-    setProjectApiKey("");
-    setModalError("");
   }
 
   function openDeleteModal() {
@@ -129,56 +126,38 @@ export default function AppPage() {
 
   function closeProjectModal() {
     setSelectedProject(null);
-    setProjectApiKey("");
-    setModalError("");
-    setIsValidatingProject(false);
   }
 
-  async function handleProjectOpen() {
+  async function handleProjectAction(project: ProjectPublicInfo) {
+    const savedKey = sessionStorage.getItem(`project_api_key:${project.id}`);
+
+    if (!savedKey) {
+      openProjectModal(project);
+      return;
+    }
+
+    const isValid = await validateProjectKey(
+      API_BASE_URL,
+      project.id,
+      savedKey,
+    );
+
+    if (!isValid) {
+      sessionStorage.removeItem(`project_api_key:${project.id}`);
+      openProjectModal(project);
+      return;
+    }
+
+    router.push(`/app/${project.id}/docs`);
+  }
+
+  function handleProjectValidated() {
     if (!selectedProject) {
       return;
     }
 
-    if (!projectApiKey.trim()) {
-      setModalError("Enter the project API key.");
-      return;
-    }
-
-    setIsValidatingProject(true);
-    setModalError("");
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/projects/${selectedProject.id}/validate`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${projectApiKey.trim()}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Project validation failed");
-      }
-
-      const validationResult = (await response.json()) as { valid: boolean };
-
-      if (!validationResult.valid) {
-        setModalError("Invalid API key.");
-        return;
-      }
-
-      sessionStorage.setItem(
-        `project_api_key:${selectedProject.id}`,
-        projectApiKey.trim(),
-      );
-      router.push(`/app/${selectedProject.id}/docs`);
-    } catch {
-      setModalError("Could not validate project.");
-    } finally {
-      setIsValidatingProject(false);
-    }
+    router.push(`/app/${selectedProject.id}/docs`);
+    closeProjectModal();
   }
 
   async function handleCreateProject() {
@@ -272,54 +251,6 @@ export default function AppPage() {
       setIsDeletingProject(false);
       setDeleteButtonActive(false);
     }
-  }
-
-  function renderProjectModal() {
-    if (!selectedProject) {
-      return null;
-    }
-
-    return (
-      <div className="modal modal-open">
-        <div className="modal-box">
-          <h2 className="text-2xl font-bold">{selectedProject.name}</h2>
-          <p className="mt-2 text-sm opacity-70">ID: {selectedProject.id}</p>
-
-          <label className="form-control mt-6 w-full">
-            <span className="label-text font-semibold">Project API key</span>
-            <input
-              type="password"
-              className="input input-bordered mt-2 w-full"
-              value={projectApiKey}
-              onChange={(event) => setProjectApiKey(event.target.value)}
-              placeholder="Enter API key"
-            />
-          </label>
-
-          {modalError ? (
-            <p className="mt-3 text-sm font-medium text-error">{modalError}</p>
-          ) : null}
-
-          <div className="modal-action">
-            <button className="btn btn-ghost" onClick={closeProjectModal}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleProjectOpen}
-              disabled={isValidatingProject}
-            >
-              {isValidatingProject ? "Checking..." : "Open Documents"}
-            </button>
-          </div>
-        </div>
-        <button
-          className="modal-backdrop"
-          aria-label="Close modal"
-          onClick={closeProjectModal}
-        />
-      </div>
-    );
   }
 
   function renderCreateModal() {
@@ -463,7 +394,7 @@ export default function AppPage() {
           </h1>
         </div>
 
-        <ul className="list rounded-box bg-base-100 shadow-md max-h-[420px] overflow-y-auto">
+        <ul className="list rounded-box bg-base-100 shadow-md max-h-105 overflow-y-auto">
           <li className="p-4 pb-2 text-xs tracking-wide opacity-60">
             {requestingProjectList
               ? "Loading projects..."
@@ -489,7 +420,7 @@ export default function AppPage() {
               <button
                 className="btn btn-square btn-ghost btn-primary"
                 aria-label={`Open documents for ${project.name}`}
-                onClick={() => openProjectModal(project)}
+                onClick={() => void handleProjectAction(project)}
               >
                 <svg
                   className="size-[1.2em]"
@@ -527,7 +458,13 @@ export default function AppPage() {
         </div>
       </div>
 
-      {renderProjectModal()}
+      <ValidationModal
+        base_url={API_BASE_URL}
+        isOpen={selectedProject !== null}
+        project={selectedProject}
+        onClose={closeProjectModal}
+        onValidated={handleProjectValidated}
+      />
       {renderCreateModal()}
       {renderDeleteModal()}
     </main>
