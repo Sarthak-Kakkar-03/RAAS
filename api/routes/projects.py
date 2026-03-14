@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 import shutil
 from dataclasses import asdict
 
@@ -12,7 +12,11 @@ from api.services.chroma_repo import (
     get_or_create_project_collection,
 )
 from api.core.config import RAW_DIR
-from api.services.doc_registry import list_docs, upsert_doc
+from api.services.doc_registry import (
+    delete_docs_for_project,
+    list_docs,
+    upsert_doc,
+)
 from api.services.project_registry import create_project as create_project_record
 from api.services.project_registry import delete_project as delete_project_record
 from api.services.project_registry import list_projects as list_project_records
@@ -57,7 +61,7 @@ async def upload_document(
 ):
     """
     Handle uploading a document file for a project, save it to the project's raw storage directory, and register the document metadata in the document registry.
-    
+
     Returns:
         result (dict): Details about the uploaded document containing:
             - `ok` (bool): `True` when upload and registration succeeded.
@@ -112,14 +116,45 @@ def list_documents(
 ):
     """
     Retrieve the documents registered for a project.
-    
+
     Requires a valid project key provided via the injected bearer token.
-    
+
     Parameters:
         project_id (str): Project identifier whose documents should be listed.
-    
+
     Returns:
         dict: A mapping with the key "documents" to a list of document records represented as dictionaries.
     """
     require_project_key(project_id, token)
     return {"documents": [asdict(doc) for doc in list_docs(project_id)]}
+
+
+@router.get("/{project_id}/validate")
+def validate_project(
+    project_id: str,
+    token: str = Depends(get_bearer_token),
+):
+    try:
+        require_project_key(project_id=project_id, token=token)
+        return {"valid": True}
+    except HTTPException:
+        return {"valid": False}
+
+
+@router.delete("/{project_id}")
+def delete_project(
+    project_id: str,
+    token: str = Depends(get_bearer_token),
+):
+    require_project_key(project_id=project_id, token=token)
+
+    try:
+        delete_project_collection(project_id)
+    except Exception:
+        pass
+
+    delete_docs_for_project(project_id)
+    delete_project_record(project_id)
+    shutil.rmtree(RAW_DIR / project_id, ignore_errors=True)
+
+    return {"ok": True, "project_id": project_id}
