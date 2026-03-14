@@ -23,6 +23,7 @@ export default function AppPage() {
     useState<ProjectPrivateInfo | null>(null);
   const [createModalError, setCreateModalError] = useState("");
   const [createButtonActive, setCreateButtonActive] = useState(true);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState("");
   const [deleteProjectApiKey, setDeleteProjectApiKey] = useState("");
@@ -188,6 +189,7 @@ export default function AppPage() {
 
     setCreateModalError("");
     setCreatedNewProject(null);
+    setIsCreatingProject(true);
 
     try {
       const response = await fetch(`${API_BASE_URL}/projects`, {
@@ -215,6 +217,7 @@ export default function AppPage() {
     } catch {
       setCreateModalError("Could not create project.");
     } finally {
+      setIsCreatingProject(false);
       setCreateButtonActive(false);
     }
   }
@@ -367,8 +370,9 @@ export default function AppPage() {
             <button
               className={`btn btn-success ${createButtonActive ? "btn-active" : "btn-disabled"}`}
               onClick={handleCreateProject}
+              disabled={isCreatingProject}
             >
-              Create
+              {isCreatingProject ? "Creating..." : "Create"}
             </button>
           </div>
         </div>
