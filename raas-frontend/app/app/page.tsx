@@ -148,7 +148,7 @@ export default function AppPage() {
       return;
     }
 
-    router.push(`/app/${project.id}/docs`);
+    router.push(`/app/${project.id}`);
   }
 
   function handleProjectValidated() {
@@ -156,7 +156,7 @@ export default function AppPage() {
       return;
     }
 
-    router.push(`/app/${selectedProject.id}/docs`);
+    router.push(`/app/${selectedProject.id}`);
     closeProjectModal();
   }
 
