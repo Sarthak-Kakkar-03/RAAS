@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 import shutil
 from dataclasses import asdict
 
@@ -136,9 +136,9 @@ def validate_project(
 ):
     try:
         require_project_key(project_id=project_id, token=token)
-        return True
-    except Exception:
-        return False
+        return {"valid": True}
+    except HTTPException:
+        return {"valid": False}
 
 
 @router.delete("/{project_id}")

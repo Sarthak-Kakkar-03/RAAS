@@ -161,9 +161,9 @@ export default function AppPage() {
         throw new Error("Project validation failed");
       }
 
-      const isValid = (await response.json()) as boolean;
+      const validationResult = (await response.json()) as { valid: boolean };
 
-      if (!isValid) {
+      if (!validationResult.valid) {
         setModalError("Invalid API key.");
         return;
       }
