@@ -19,6 +19,7 @@ class DocRecord:
 
 
 def _row_to_doc_record(row) -> DocRecord:
+    """Convert a SQLite row into an immutable document registry record."""
     return DocRecord(
         project_id=row["project_id"],
         doc_id=row["doc_id"],
@@ -32,6 +33,7 @@ def _row_to_doc_record(row) -> DocRecord:
 
 
 def init_registry() -> None:
+    """Create the documents table and apply lightweight schema upgrades."""
     with get_conn() as conn:
         conn.execute("""
     CREATE TABLE IF NOT EXISTS documents (
@@ -71,6 +73,7 @@ def upsert_doc(
     num_chunks: int = 0,
     error: Optional[str] = None,
 ) -> None:
+    """Insert or update document metadata for a project document."""
     init_registry()
     created_at = datetime.now(timezone.utc).isoformat()
 
@@ -100,6 +103,7 @@ def upsert_doc(
 
 
 def list_docs(project_id: str) -> List[DocRecord]:
+    """List document records for a project in reverse creation order."""
     init_registry()
     with get_conn() as conn:
         rows = conn.execute(
@@ -111,6 +115,7 @@ def list_docs(project_id: str) -> List[DocRecord]:
 
 
 def get_doc(project_id: str, doc_id: str) -> Optional[DocRecord]:
+    """Return a single document record for a project, if it exists."""
     init_registry()
     with get_conn() as conn:
         row = conn.execute(
@@ -122,6 +127,7 @@ def get_doc(project_id: str, doc_id: str) -> Optional[DocRecord]:
 
 
 def delete_doc(project_id: str, doc_id: str) -> None:
+    """Delete one document record from the registry."""
     init_registry()
     with get_conn() as conn:
         conn.execute(
@@ -131,6 +137,7 @@ def delete_doc(project_id: str, doc_id: str) -> None:
 
 
 def delete_docs_for_project(project_id: str) -> None:
+    """Delete all document records associated with a project."""
     init_registry()
     with get_conn() as conn:
         conn.execute(

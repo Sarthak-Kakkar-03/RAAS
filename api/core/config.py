@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     @field_validator("openai_api_key")
     @classmethod
     def validate_openai_api_key(cls, value: SecretStr) -> SecretStr:
+        """Ensure the configured OpenAI API key is present and non-empty."""
         if not value.get_secret_value().strip():
             raise ValueError("OPENAI_API_KEY must be set")
         return value

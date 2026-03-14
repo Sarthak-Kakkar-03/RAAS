@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def ingest_pending_docs(project_id: str) -> Dict[str, Any]:
+    """Ingest every not-yet-ingested document registered for a project."""
     pending_docs = [doc for doc in list_docs(project_id) if not doc.ingested]
 
     ingested: List[Dict[str, Any]] = []
