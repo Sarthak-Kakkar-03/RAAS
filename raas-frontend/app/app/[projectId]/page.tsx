@@ -1,5 +1,9 @@
 "use client";
-import type { DocumentInfo, UploadDocumentStatus } from "@/types/api";
+import type {
+  DocumentInfo,
+  IngestBatchStatus,
+  UploadDocumentStatus,
+} from "@/types/api";
 import { use, useEffect, useState } from "react";
 
 const API_BASE_URL =
@@ -25,6 +29,11 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [deleteModalError, setDeleteModalError] = useState("");
   const [deletedDocumentId, setDeletedDocumentId] = useState("");
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
+  const [ingestModalOpen, setIngestModalOpen] = useState(false);
+  const [ingestModalError, setIngestModalError] = useState("");
+  const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(null);
+  const [isIngestingDocuments, setIsIngestingDocuments] = useState(false);
+  const canIngestDocuments = documentList.some((doc) => !doc.ingested);
 
   async function retrieveDocumentInfo(signal?: AbortSignal) {
     const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
@@ -98,6 +107,16 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setDeleteModalOpen(true);
   }
 
+  function openIngestModal() {
+    if (!canIngestDocuments) {
+      return;
+    }
+
+    setIngestModalError("");
+    setIngestResult(null);
+    setIngestModalOpen(true);
+  }
+
   function closeDeleteModal() {
     if (isDeletingDocument) {
       return;
@@ -107,6 +126,16 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setDeleteModalError("");
     setDeletedDocumentId("");
     setDeleteModalOpen(false);
+  }
+
+  function closeIngestModal() {
+    if (isIngestingDocuments) {
+      return;
+    }
+
+    setIngestModalError("");
+    setIngestResult(null);
+    setIngestModalOpen(false);
   }
 
   async function handleUploadDocument() {
@@ -200,6 +229,40 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     }
   }
 
+  async function handleIngestDocuments() {
+    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+
+    if (!apiKey) {
+      setIngestModalError("Project session is not validated.");
+      return;
+    }
+
+    setIngestModalError("");
+    setIngestResult(null);
+    setIsIngestingDocuments(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ingest`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to ingest documents.");
+      }
+
+      const data = (await response.json()) as IngestBatchStatus;
+      setIngestResult(data);
+      await retrieveDocumentInfo();
+    } catch {
+      setIngestModalError("Could not ingest documents.");
+    } finally {
+      setIsIngestingDocuments(false);
+    }
+  }
+
   function renderUploadModal() {
     if (!uploadModalOpen) {
       return null;
@@ -230,6 +293,13 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             </p>
           ) : null}
 
+          {isUploadingDocument ? (
+            <div className="mt-4 flex items-center gap-3 text-sm opacity-80">
+              <span className="loading loading-infinity loading-md"></span>
+              <span>Uploading document. Please wait.</span>
+            </div>
+          ) : null}
+
           {uploadedDocument ? (
             <div className="mt-4 rounded-box bg-success/10 p-4 text-sm">
               <p className="font-semibold text-success">
@@ -254,7 +324,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               disabled={isUploadingDocument || uploadedDocument !== null}
             >
               {isUploadingDocument
-                ? "Uploading..."
+                ? "Uploading"
                 : uploadedDocument
                   ? "Uploaded"
                   : "Upload"}
@@ -300,6 +370,13 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             </p>
           ) : null}
 
+          {isDeletingDocument ? (
+            <div className="mt-4 flex items-center gap-3 text-sm opacity-80">
+              <span className="loading loading-infinity loading-md"></span>
+              <span>Deleting document. Please wait.</span>
+            </div>
+          ) : null}
+
           {deletedDocumentId ? (
             <div className="mt-4 rounded-box bg-success/10 p-4 text-sm">
               <p className="font-semibold text-success">
@@ -323,7 +400,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               disabled={isDeletingDocument || deletedDocumentId !== ""}
             >
               {isDeletingDocument
-                ? "Deleting..."
+                ? "Deleting"
                 : deletedDocumentId
                   ? "Deleted"
                   : "Delete"}
@@ -334,6 +411,74 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           className="modal-backdrop"
           aria-label="Close delete document modal"
           onClick={closeDeleteModal}
+        />
+      </div>
+    );
+  }
+
+  function renderIngestModal() {
+    if (!ingestModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box">
+          <h1 className="text-lg font-bold">Ingest Documents</h1>
+          <p className="mt-2 text-sm opacity-70">
+            Confirm ingestion of all documents in this project that are not yet
+            ingested.
+          </p>
+
+          {ingestModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {ingestModalError}
+            </p>
+          ) : null}
+
+          {isIngestingDocuments ? (
+            <div className="mt-4 flex items-center gap-3 text-sm opacity-80">
+              <span className="loading loading-infinity loading-md"></span>
+              <span>Ingesting documents. Please wait.</span>
+            </div>
+          ) : null}
+
+          {ingestResult ? (
+            <div className="mt-4 rounded-box bg-success/10 p-4 text-sm">
+              <p className="font-semibold text-success">
+                Ingest completed successfully.
+              </p>
+              <p className="mt-2">Processed: {ingestResult.processed}</p>
+              <p>Ingested: {ingestResult.ingested_count}</p>
+              <p>Failed: {ingestResult.failed_count}</p>
+            </div>
+          ) : null}
+
+          <div className="modal-action">
+            <button
+              className="btn btn-ghost"
+              onClick={closeIngestModal}
+              disabled={isIngestingDocuments}
+            >
+              {ingestResult ? "Close" : "Cancel"}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleIngestDocuments}
+              disabled={isIngestingDocuments || ingestResult !== null}
+            >
+              {isIngestingDocuments
+                ? "Ingesting"
+                : ingestResult
+                  ? "Ingested"
+                  : "Ingest"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close ingest documents modal"
+          onClick={closeIngestModal}
         />
       </div>
     );
@@ -378,7 +523,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               <tbody>
 
                 {documentList.map((info, index) => (
-                  <tr>
+                  <tr key={info.doc_id}>
                     <th>
                       <span className="text-xl">
                         {String(index + 1).padStart(2, "0")}
@@ -425,7 +570,11 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       </div>
 
       <div className="flex flex-row justify-evenly p-3">
-        <button className={`btn btn-xl btn-ghost btn-primary p-3 ${documentList.some((doc) => !doc.ingested) ? "" : "btn-disabled"}`}>
+        <button
+          className={`btn btn-xl btn-ghost btn-primary p-3 ${canIngestDocuments ? "" : "btn-disabled"}`}
+          onClick={openIngestModal}
+          disabled={!canIngestDocuments}
+        >
           <span>Ingest</span>
         </button>
         <button
@@ -452,6 +601,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       </div>
       {renderUploadModal()}
       {renderDeleteModal()}
+      {renderIngestModal()}
     </main>
   );
 }

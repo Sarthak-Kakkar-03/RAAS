@@ -37,3 +37,11 @@ export type UploadDocumentStatus = {
   bytes: number;
   ingested: boolean;
 };
+
+export type IngestBatchStatus = {
+  ok: boolean;
+  project_id: string;
+  processed: number;
+  ingested_count: number;
+  failed_count: number;
+};
