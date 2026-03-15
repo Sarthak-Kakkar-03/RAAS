@@ -1,6 +1,7 @@
-from pathlib import Path
 import os
-from pydantic import Field, SecretStr, field_validator
+from pathlib import Path
+
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DATA_DIR = Path("data")
@@ -23,23 +24,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    openai_api_key: SecretStr = Field(
-        default_factory=lambda: SecretStr(""),
-        validate_default=True,
-    )
+    openai_api_key: SecretStr = Field(default_factory=lambda: SecretStr(""))
     openai_embedding_model: str = Field(default="text-embedding-3-small")
     admin_password: SecretStr = Field(default_factory=lambda: SecretStr(""))
     admin_session_secret: SecretStr = Field(default_factory=lambda: SecretStr(""))
     admin_session_max_age_seconds: int = Field(default=86400, ge=300)
     admin_session_cookie_secure: bool = Field(default=False)
-
-    @field_validator("openai_api_key")
-    @classmethod
-    def validate_openai_api_key(cls, value: SecretStr) -> SecretStr:
-        """Ensure the configured OpenAI API key is present and non-empty."""
-        if not value.get_secret_value().strip():
-            raise ValueError("OPENAI_API_KEY must be set")
-        return value
 
 
 settings = Settings()
