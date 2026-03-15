@@ -1,2 +1,12 @@
 @import "tailwindcss";
 @plugin "daisyui";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  min-height: 100%;
+  background-color: oklch(var(--b2));
+}
