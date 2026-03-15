@@ -16,6 +16,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [documentList, setDocumentList] = useState<DocumentInfo[]>([]);
 
   useEffect(() => {
+    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
     let isMounted = true;
     const controller = new AbortController();
 
@@ -26,6 +27,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           {
             method: "GET",
             signal: controller.signal,
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
           },
         );
         if (!response.ok) {
@@ -53,90 +57,109 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   }, [projectId]);
 
   return (
-    <main className="min-h-screen bg-base-200 px-8 py-12">
-      <div className="flex flex-col items-stretch">
-        <div className="px-4">
-          <h1 className="font-bold text-5xl text-primary">Project Dashboard</h1>
+    <main className="min-h-screen flex flex-col justify-between items-stretch bg-base-200 px-8 py-12">
+      <div>
+        <div className="">
+          <div className="px-4">
+            <h1 className="font-bold text-5xl text-primary">
+              Project Dashboard
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-5">
+          <div>
+            <h2 className="font-bold text-3xl text-white">Document List</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>
+                    {documentList.length > 0
+                      ? `Displaying ${documentList.length} documents`
+                      : "Found 0 documents"}
+                  </th>
+                </tr>
+                <tr>
+                  <th>
+                    <label>
+                      <input type="checkbox" className="checkbox" />
+                    </label>
+                  </th>
+                  <th>Name</th>
+                  <th>Job</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr>
+                  <th>
+                    <label>
+                      <input type="checkbox" className="checkbox" />
+                    </label>
+                  </th>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="avatar">
+                        <div className="mask mask-squircle h-12 w-12">
+                          <img
+                            src="https://img.daisyui.com/images/profile/demo/2@94.webp"
+                            alt="Avatar Tailwind CSS Component"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-bold">Hart Hagerty</div>
+                        <div className="text-sm opacity-50">United States</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    Zemlak, Daniel and Leannon
+                    <br />
+                    <span className="badge badge-ghost badge-sm">
+                      Desktop Support Technician
+                    </span>
+                  </td>
+                  <td>Purple</td>
+                  <th>
+                    <button className="btn btn-ghost btn-xs">details</button>
+                  </th>
+                </tr>
+              </tbody>
+
+              <tfoot>
+                <tr>
+                  <th>
+                    <label>
+                      <input type="checkbox" className="checkbox" />
+                    </label>
+                  </th>
+                  <th>Name</th>
+                  <th>Job</th>
+                  <th>Status</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-5">
-        <div>
-          <h2 className="font-bold text-3xl text-white">Document List</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>
-                  {documentList.length > 0
-                    ? `Displaying ${documentList.length} documents`
-                    : "Found 0 documents"}
-                </th>
-              </tr>
-              <tr>
-                <th>
-                  <label>
-                    <input type="checkbox" className="checkbox" />
-                  </label>
-                </th>
-                <th>Name</th>
-                <th>Job</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr>
-                <th>
-                  <label>
-                    <input type="checkbox" className="checkbox" />
-                  </label>
-                </th>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar">
-                      <div className="mask mask-squircle h-12 w-12">
-                        <img
-                          src="https://img.daisyui.com/images/profile/demo/2@94.webp"
-                          alt="Avatar Tailwind CSS Component"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-bold">Hart Hagerty</div>
-                      <div className="text-sm opacity-50">United States</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  Zemlak, Daniel and Leannon
-                  <br />
-                  <span className="badge badge-ghost badge-sm">
-                    Desktop Support Technician
-                  </span>
-                </td>
-                <td>Purple</td>
-                <th>
-                  <button className="btn btn-ghost btn-xs">details</button>
-                </th>
-              </tr>
-            </tbody>
-
-            <tfoot>
-              <tr>
-                <th>
-                  <label>
-                    <input type="checkbox" className="checkbox" />
-                  </label>
-                </th>
-                <th>Name</th>
-                <th>Job</th>
-                <th>Status</th>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+      <div className="flex flex-row justify-evenly p-3">
+        <button className="btn btn-xl btn-ghost btn-primary p-3">
+          <span>Ingest</span>
+        </button>
+        <button className="btn btn-xl btn-ghost btn-success p-3">
+          <span>Upload</span>
+        </button>
+        <button className="btn btn-xl btn-ghost btn-accent p-3">
+          <span>Refresh List</span>
+        </button>
+        <button className="btn btn-xl btn-ghost btn-error p-3">
+          <span>Delete</span>
+        </button>
       </div>
     </main>
   );
