@@ -167,14 +167,18 @@ Set these before deploying:
 ```bash
 fly secrets set \
   OPENAI_API_KEY=your_key_here \
-  PROJECT_API_KEY_SECRET=replace_with_a_stable_secret \
+  ADMIN_PASSWORD=replace_with_a_single_admin_password \
+  ADMIN_SESSION_SECRET=replace_with_a_stable_random_session_secret \
   CORS_ALLOWED_ORIGINS=https://your-app.fly.dev
 ```
 
 Optional overrides:
 
 ```bash
-fly secrets set OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+fly secrets set \
+  OPENAI_EMBEDDING_MODEL=text-embedding-3-small \
+  ADMIN_SESSION_MAX_AGE_SECONDS=86400 \
+  ADMIN_SESSION_COOKIE_SECURE=true
 ```
 
 ### Create the Volume
@@ -239,7 +243,10 @@ curl -X POST https://your-app.fly.dev/api/projects/<PROJECT_ID>/query \
 ## API Endpoints
 
 - `GET /health` - API and Chroma heartbeat status
-- `POST /projects` - create project (`id`, `name`, `api_key`)
+- `POST /auth/login` - create admin session cookie from the configured admin password
+- `GET /auth/session` - check whether the current admin session cookie is valid
+- `POST /auth/logout` - clear the current admin session cookie
+- `POST /projects` - create project (`id`, `name`, `api_key`) (admin session required)
 - `GET /projects` - list projects
 - `POST /projects/{project_id}/documents` - upload PDF (auth required)
 - `GET /projects/{project_id}/documents` - list uploaded docs (auth required)
@@ -250,19 +257,28 @@ curl -X POST https://your-app.fly.dev/api/projects/<PROJECT_ID>/query \
 - `POST /projects/{project_id}/index` - enqueue background indexing job (auth required)
 - `GET /jobs/{job_id}` - fetch job status/result
 - `POST /projects/{project_id}/query` - retrieve top-k chunks (auth required)
+- `DELETE /projects/{project_id}` - delete project and associated storage (admin session required)
 - `POST /retrieve` - legacy alias (returns note)
 
 ## API Flow (Quick Example)
 
-1. Create a project:
+1. Sign in as admin and store the session cookie:
 
 ```bash
-curl -s -X POST http://localhost:8000/projects \
+curl -s -c cookies.txt -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password":"<ADMIN_PASSWORD>"}'
+```
+
+2. Create a project:
+
+```bash
+curl -s -b cookies.txt -X POST http://localhost:8000/projects \
   -H "Content-Type: application/json" \
   -d '{"name":"demo"}'
 ```
 
-2. Upload a PDF:
+3. Upload a PDF:
 
 ```bash
 curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/documents \
@@ -270,7 +286,7 @@ curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/documents \
   -F "file=@./sample.pdf"
 ```
 
-3. Index documents (choose one):
+4. Index documents (choose one):
 
 Synchronous:
 ```bash
@@ -289,13 +305,20 @@ Check job status:
 curl -s http://localhost:8000/jobs/<JOB_ID>
 ```
 
-4. Query retrieval:
+5. Query retrieval:
 
 ```bash
 curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
   -H "Authorization: Bearer <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"query":"What does this document say?","top_k":5}'
+```
+
+6. Delete a project with the admin session:
+
+```bash
+curl -s -b cookies.txt -X DELETE \
+  http://localhost:8000/projects/<PROJECT_ID>
 ```
 
 ## Persistence and Data

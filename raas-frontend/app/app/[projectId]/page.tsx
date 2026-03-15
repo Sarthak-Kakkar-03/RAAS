@@ -49,8 +49,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     null,
   );
   const [isRetrieving, setIsRetrieving] = useState(false);
+  const [directRetrieveEndpoint, setDirectRetrieveEndpoint] = useState("");
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
   const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
+
+  useEffect(() => {
+    const apiBase = API_BASE_URL.startsWith("http")
+      ? API_BASE_URL
+      : typeof window !== "undefined"
+        ? new URL(API_BASE_URL, window.location.origin).toString()
+        : API_BASE_URL;
+    setDirectRetrieveEndpoint(`${apiBase}/projects/${projectId}/query`);
+  }, [projectId]);
 
   function openValidationModal() {
     setValidationModalOpen(true);
@@ -686,7 +696,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             </p>
             <div className="mt-3 rounded-box bg-base-100 px-3 py-2 font-mono text-xs break-all">
               <span className="font-semibold text-warning">POST</span>{" "}
-              {API_BASE_URL}/projects/{projectId}/query
+              {directRetrieveEndpoint}
             </div>
           </div>
 
