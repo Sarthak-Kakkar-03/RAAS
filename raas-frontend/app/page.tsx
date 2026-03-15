@@ -1,15 +1,20 @@
 "use client";
 
+import AdminAuthModal from "@/app/utils/adminAuthModal";
+import { loginAdmin } from "@/app/utils/adminSession";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HealthResponse } from "@/types/api";
 import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 const HEALTH_CHECK_INTERVAL_MS = 15000;
 
 export default function Home() {
+  const router = useRouter();
   const [isHealthy, setIsHealthy] = useState(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState(true);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [adminModalError, setAdminModalError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +88,13 @@ export default function Home() {
       : "Server is down";
   const statusClass = isHealthy ? "status-success" : "status-error";
 
+  async function handleAdminLogin(password: string) {
+    await loginAdmin(password);
+    setAdminModalError("");
+    setAdminModalOpen(false);
+    router.push("/app");
+  }
+
   return (
     <main className="min-h-screen bg-base-200 px-6 py-12 flex items-stretch">
       <div className="mx-auto flex w-full max-w-5xl flex-col justify-evenly items-center gap-6 text-center">
@@ -138,12 +150,16 @@ export default function Home() {
             </span>
           </div>
           {isHealthy ? (
-            <Link
-              href="/app"
+            <button
+              type="button"
               className="btn btn-primary btn-lg px-8 text-base md:text-lg"
+              onClick={() => {
+                setAdminModalError("");
+                setAdminModalOpen(true);
+              }}
             >
               Enter Site
-            </Link>
+            </button>
           ) : (
             <button
               className="btn btn-neutral btn-lg px-8 text-base md:text-lg"
@@ -154,6 +170,27 @@ export default function Home() {
           )}
         </div>
       </div>
+      <AdminAuthModal
+        isOpen={adminModalOpen}
+        title="Enter Site"
+        description="Enter the admin password to access project management."
+        confirmLabel="Enter"
+        errorMessage={adminModalError}
+        onClose={() => {
+          setAdminModalError("");
+          setAdminModalOpen(false);
+        }}
+        onSubmit={async (password) => {
+          try {
+            await handleAdminLogin(password);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Could not sign in.";
+            setAdminModalError(message);
+            throw error;
+          }
+        }}
+      />
     </main>
   );
 }

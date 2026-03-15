@@ -1,5 +1,7 @@
 "use client";
 
+import AdminAuthModal from "@/app/utils/adminAuthModal";
+import { getAdminSession, loginAdmin } from "@/app/utils/adminSession";
 import type { ProjectPrivateInfo, ProjectPublicInfo } from "@/types/api";
 import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 import { validateProjectKey } from "@/app/utils/projectValidation";
@@ -23,11 +25,15 @@ export default function AppPage() {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState("");
-  const [deleteProjectApiKey, setDeleteProjectApiKey] = useState("");
   const [deleteModalError, setDeleteModalError] = useState("");
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [deletedProjectId, setDeletedProjectId] = useState("");
   const [deleteButtonActive, setDeleteButtonActive] = useState(true);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [adminModalError, setAdminModalError] = useState("");
+  const [pendingAdminAction, setPendingAdminAction] = useState<
+    "create" | "delete" | null
+  >(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -105,7 +111,6 @@ export default function AppPage() {
 
   function openDeleteModal() {
     setDeleteProjectId("");
-    setDeleteProjectApiKey("");
     setDeleteModalError("");
     setDeletedProjectId("");
     setDeleteButtonActive(true);
@@ -114,7 +119,6 @@ export default function AppPage() {
 
   function closeDeleteModal() {
     setDeleteProjectId("");
-    setDeleteProjectApiKey("");
     setDeleteModalError("");
     setDeletedProjectId("");
     setIsDeletingProject(false);
@@ -171,6 +175,7 @@ export default function AppPage() {
     try {
       const response = await fetch(`${API_BASE_URL}/projects`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -180,7 +185,15 @@ export default function AppPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Project creation failed");
+        const errorBody = (await response.json().catch(() => null)) as {
+          detail?: string;
+        } | null;
+        if (response.status === 401) {
+          setCreateModalOpen(false);
+          setPendingAdminAction("create");
+          setAdminModalOpen(true);
+        }
+        throw new Error(errorBody?.detail ?? "Project creation failed");
       }
 
       const projectDetails = (await response.json()) as ProjectPrivateInfo;
@@ -205,11 +218,6 @@ export default function AppPage() {
       return;
     }
 
-    if (!deleteProjectApiKey.trim()) {
-      setDeleteModalError("Enter project API key.");
-      return;
-    }
-
     setDeleteModalError("");
     setDeletedProjectId("");
     setIsDeletingProject(true);
@@ -220,15 +228,18 @@ export default function AppPage() {
 
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${deleteProjectApiKey.trim()}`,
-        },
+        credentials: "include",
       });
 
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => null)) as {
           detail?: string;
         } | null;
+        if (response.status === 401) {
+          setDeleteModalOpen(false);
+          setPendingAdminAction("delete");
+          setAdminModalOpen(true);
+        }
         throw new Error(errorBody?.detail ?? "Project deletion failed");
       }
 
@@ -237,7 +248,6 @@ export default function AppPage() {
       );
       setDeletedProjectId(projectId);
       setDeleteProjectId("");
-      setDeleteProjectApiKey("");
       setReceivedProjectList(true);
     } catch (error) {
       if (error instanceof Error) {
@@ -324,7 +334,7 @@ export default function AppPage() {
         <div className="modal-box gap-5">
           <h1 className="font-bold text-lg">Delete Project</h1>
           <p className="mt-2 text-sm opacity-70">
-            Enter the project ID and API key to permanently delete a project.
+            Enter the project ID to permanently delete a project.
           </p>
 
           <label className="form-control mt-6 w-full">
@@ -335,17 +345,6 @@ export default function AppPage() {
               value={deleteProjectId}
               onChange={(event) => setDeleteProjectId(event.target.value)}
               placeholder="Enter project ID"
-            />
-          </label>
-
-          <label className="form-control mt-4 w-full">
-            <span className="label-text font-semibold">Project API key</span>
-            <input
-              type="password"
-              className="input input-bordered mt-2 w-full"
-              value={deleteProjectApiKey}
-              onChange={(event) => setDeleteProjectApiKey(event.target.value)}
-              placeholder="Enter project API key"
             />
           </label>
 
@@ -381,6 +380,37 @@ export default function AppPage() {
         />
       </div>
     );
+  }
+
+  async function requireAdmin(action: "create" | "delete") {
+    const session = await getAdminSession();
+
+    if (session?.authenticated) {
+      if (action === "create") {
+        openCreateModal();
+      } else {
+        openDeleteModal();
+      }
+      return;
+    }
+
+    setAdminModalError("");
+    setPendingAdminAction(action);
+    setAdminModalOpen(true);
+  }
+
+  async function handleAdminLogin(password: string) {
+    await loginAdmin(password);
+    setAdminModalError("");
+    setAdminModalOpen(false);
+
+    if (pendingAdminAction === "create") {
+      openCreateModal();
+    } else if (pendingAdminAction === "delete") {
+      openDeleteModal();
+    }
+
+    setPendingAdminAction(null);
   }
 
   return (
@@ -443,13 +473,13 @@ export default function AppPage() {
         <div className="flex justify-evenly">
           <button
             className="btn btn-success btn-ghost btn-lg font-bold btn-outline"
-            onClick={() => openCreateModal()}
+            onClick={() => void requireAdmin("create")}
           >
             Create Project
           </button>
           <button
             className="btn btn-error btn-ghost btn-lg font-bold btn-outline"
-            onClick={openDeleteModal}
+            onClick={() => void requireAdmin("delete")}
           >
             Delete Project
           </button>
@@ -465,6 +495,28 @@ export default function AppPage() {
       />
       {renderCreateModal()}
       {renderDeleteModal()}
+      <AdminAuthModal
+        isOpen={adminModalOpen}
+        title="Admin Sign In"
+        description="Enter the admin password to manage projects."
+        confirmLabel="Continue"
+        errorMessage={adminModalError}
+        onClose={() => {
+          setAdminModalError("");
+          setPendingAdminAction(null);
+          setAdminModalOpen(false);
+        }}
+        onSubmit={async (password) => {
+          try {
+            await handleAdminLogin(password);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Could not sign in.";
+            setAdminModalError(message);
+            throw error;
+          }
+        }}
+      />
     </main>
   );
 }
