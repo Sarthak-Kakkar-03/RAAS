@@ -193,7 +193,7 @@ fly secrets set \
 Create the volume once in the same region as the app:
 
 ```bash
-fly volumes create raas_data --region iad --size 10
+fly volumes create raas_data --region ewr --size 10
 ```
 
 ### Deploy
