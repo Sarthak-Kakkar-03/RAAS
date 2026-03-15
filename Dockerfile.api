@@ -1,6 +1,0 @@
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Pin uv for reproducible builds.
-RUN python -m pip install --no-cache-dir uv==0.4.30

@@ -6,11 +6,9 @@ import type {
   QueryResponse,
   UploadDocumentStatus,
 } from "@/types/api";
+import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 import ValidationModal from "@/app/utils/validationModal";
 import { use, useEffect, useEffectEvent, useState } from "react";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
 
 type ProjectDashboardPageProps = {
   params: Promise<{

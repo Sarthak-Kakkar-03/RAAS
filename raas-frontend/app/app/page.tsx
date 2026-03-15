@@ -1,13 +1,11 @@
 "use client";
 
 import type { ProjectPrivateInfo, ProjectPublicInfo } from "@/types/api";
+import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 import { validateProjectKey } from "@/app/utils/projectValidation";
 import ValidationModal from "@/app/utils/validationModal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
 
 export default function AppPage() {
   const router = useRouter();

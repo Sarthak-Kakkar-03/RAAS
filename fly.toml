@@ -1,0 +1,33 @@
+app = "raas"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  API_PORT = "8000"
+  CHROMA_HOST = "127.0.0.1"
+  CHROMA_PORT = "8001"
+  CHROMA_PERSIST_DIR = "/app/data/chroma"
+  NEXT_PUBLIC_RAAS_API_BASE_URL = "/api"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "15s"
+  method = "get"
+  path = "/api/health"
+  protocol = "http"
+  timeout = "10s"
+
+[mounts]
+  source = "raas_data"
+  destination = "/app/data"

@@ -78,7 +78,7 @@ def ingest_pending_docs(project_id: str) -> Dict[str, Any]:
                 extra={
                     "project_id": project_id,
                     "doc_id": doc.doc_id,
-                    "filename": doc.filename,
+                    "document_filename": doc.filename,
                 },
             )
             upsert_doc(

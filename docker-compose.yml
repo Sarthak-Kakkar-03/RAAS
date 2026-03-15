@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile
     working_dir: /app
     command: >
       sh -c "uv sync --frozen &&
