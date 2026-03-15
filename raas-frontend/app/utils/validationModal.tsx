@@ -128,13 +128,7 @@ export default function ValidationModal({
           <button
             className="btn btn-primary"
             onClick={handleValidate}
-            <button
-             className="btn btn-primary"
-             onClick={handleValidate}
-             disabled={isValidatingProject || !currentProjectId}
-           >
-             {isValidatingProject ? "Checking..." : confirmLabel}
-           </button>
+            disabled={isValidatingProject || !currentProjectId}
           >
             {isValidatingProject ? "Checking..." : confirmLabel}
           </button>
