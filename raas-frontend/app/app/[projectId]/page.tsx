@@ -21,6 +21,11 @@ type ProjectDashboardPageProps = {
 export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const { projectId } = use(params);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
+  const [validationProject, setValidationProject] =
+    useState<ProjectPublicInfo | null>(null);
+  const [isLoadingValidationProject, setIsLoadingValidationProject] =
+    useState(true);
+  const [validationProjectError, setValidationProjectError] = useState("");
   const [documentList, setDocumentList] = useState<DocumentInfo[]>([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -44,10 +49,6 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [isRetrieving, setIsRetrieving] = useState(false);
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
   const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
-  const validationProject: ProjectPublicInfo = {
-    id: projectId,
-    name: `Project ${projectId}`,
-  };
 
   function openValidationModal() {
     setValidationModalOpen(true);
@@ -119,6 +120,41 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setDocumentList(data.documents);
   }
 
+  const loadValidationProject = useEffectEvent(async (signal: AbortSignal) => {
+    setIsLoadingValidationProject(true);
+    setValidationProjectError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+        method: "GET",
+        signal,
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as
+          | { detail?: string }
+          | null;
+        throw new Error(errorBody?.detail ?? "Could not load project details.");
+      }
+
+      const project = (await response.json()) as ProjectPublicInfo;
+      setValidationProject(project);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      setValidationProject(null);
+      setValidationProjectError(
+        error instanceof Error
+          ? error.message
+          : "Could not load project details.",
+      );
+    } finally {
+      setIsLoadingValidationProject(false);
+    }
+  });
+
   const loadDocuments = useEffectEvent(async (signal: AbortSignal) => {
     try {
       await retrieveDocumentInfo(signal);
@@ -128,6 +164,15 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       }
     }
   });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadValidationProject(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [projectId]);
 
   useEffect(() => {
     if (!sessionStorage.getItem(`project_api_key:${projectId}`)) {
@@ -844,6 +889,14 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         base_url={API_BASE_URL}
         isOpen={validationModalOpen}
         project={validationProject}
+        projectId={projectId}
+        projectNameStatus={
+          isLoadingValidationProject
+            ? "Loading project details."
+            : validationProjectError
+              ? `${validationProjectError} The API key cannot be revalidated until project details are available.`
+              : ""
+        }
         onClose={closeValidationModal}
         onValidated={handleProjectValidated}
         confirmLabel="Continue"
