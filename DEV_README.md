@@ -130,3 +130,82 @@ curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
   -H "Content-Type: application/json" \
   -d '{"query":"What does this document say?","top_k":5}'
 ```
+
+## Retrieval API
+
+Use the retrieval endpoint to fetch the most relevant chunks for a project:
+
+```text
+POST /projects/{project_id}/query
+```
+
+Authentication:
+- Send the project API key as a bearer token in the `Authorization` header.
+
+Expected request body:
+
+```json
+{
+  "query": "What does this document say about refunds?",
+  "top_k": 5,
+  "where": {
+    "doc_id": "optional-doc-filter"
+  }
+}
+```
+
+Request fields:
+- `query`: required string, minimum length 1.
+- `top_k`: optional integer, default `5`, allowed range `1` to `50`.
+- `where`: optional object for Chroma metadata filters.
+- `filters`: accepted as an alias for `where`.
+
+Example request:
+
+```bash
+curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What does this document say about refunds?",
+    "top_k": 5
+  }'
+```
+
+Expected response shape:
+
+```json
+{
+  "results": [
+    {
+      "id": "chunk_001",
+      "text": "Refunds are available within 30 days of purchase.",
+      "metadata": {
+        "doc_id": "policy_pdf",
+        "filename": "refund-policy.pdf",
+        "chunk_index": 0
+      },
+      "score": 0.91
+    }
+  ],
+  "latency_ms": 42,
+  "retrieval_debug": {
+    "project_id": "demo",
+    "top_k": 5
+  },
+  "ok": true
+}
+```
+
+Response fields:
+- `results`: list of retrieval hits returned by the retrieval service.
+- `latency_ms`: total retrieval time in milliseconds.
+- `retrieval_debug`: debug metadata currently including `project_id` and `top_k`.
+- `ok`: boolean success flag.
+
+Error behavior:
+- `401` if the bearer token is missing.
+- `403` if the project API key is invalid.
+- `404` if the project does not exist.
+- `400` for invalid query parameters.
+- `500` for unexpected retrieval failures.
