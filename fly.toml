@@ -1,33 +1,43 @@
-app = "raas"
-primary_region = "ewr"
+# fly.toml app configuration file generated for raas-sk on 2026-03-15T12:37:05-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'raas-sk'
+primary_region = 'ewr'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "8080"
-  API_PORT = "8000"
-  CHROMA_HOST = "127.0.0.1"
-  CHROMA_PORT = "8001"
-  CHROMA_PERSIST_DIR = "/app/data/chroma"
-  NEXT_PUBLIC_RAAS_API_BASE_URL = "/api"
+  API_PORT = '8000'
+  CHROMA_HOST = '127.0.0.1'
+  CHROMA_PERSIST_DIR = '/app/data/chroma'
+  CHROMA_PORT = '8001'
+  NEXT_PUBLIC_RAAS_API_BASE_URL = '/api'
+  PORT = '8080'
+
+[[mounts]]
+  source = 'raas_data'
+  destination = '/app/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
-[[http_service.checks]]
-  grace_period = "30s"
-  interval = "15s"
-  method = "get"
-  path = "/api/health"
-  protocol = "http"
-  timeout = "10s"
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '10s'
+    grace_period = '30s'
+    method = 'get'
+    path = '/api/health'
+    protocol = 'http'
 
-[mounts]
-  source = "raas_data"
-  destination = "/app/data"
+[[vm]]
+  memory = '1gb'
+  cpus = 1
+  memory_mb = 1024
