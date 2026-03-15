@@ -27,3 +27,13 @@ export type DocumentInfo = {
   created_at: string;
   error: string | null;
 };
+
+export type UploadDocumentStatus = {
+  ok: boolean;
+  project_id: string;
+  doc_id: string;
+  filename: string;
+  path: string;
+  bytes: number;
+  ingested: boolean;
+};
