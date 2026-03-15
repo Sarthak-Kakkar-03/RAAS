@@ -40,12 +40,16 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
   const [ingestModalOpen, setIngestModalOpen] = useState(false);
   const [ingestModalError, setIngestModalError] = useState("");
-  const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(null);
+  const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(
+    null,
+  );
   const [isIngestingDocuments, setIsIngestingDocuments] = useState(false);
   const [retrieveModalOpen, setRetrieveModalOpen] = useState(false);
   const [retrieveQuery, setRetrieveQuery] = useState("");
   const [retrieveModalError, setRetrieveModalError] = useState("");
-  const [retrieveResult, setRetrieveResult] = useState<QueryResponse | null>(null);
+  const [retrieveResult, setRetrieveResult] = useState<QueryResponse | null>(
+    null,
+  );
   const [isRetrieving, setIsRetrieving] = useState(false);
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
   const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
@@ -78,9 +82,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       return response;
     }
 
-    const errorBody = (await response.json().catch(() => null)) as
-      | { detail?: string }
-      | null;
+    const errorBody = (await response.json().catch(() => null)) as {
+      detail?: string;
+    } | null;
     const detail = errorBody?.detail?.toLowerCase() ?? "";
     const isAuthFailure =
       response.status === 401 ||
@@ -131,9 +135,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       });
 
       if (!response.ok) {
-        const errorBody = (await response.json().catch(() => null)) as
-          | { detail?: string }
-          | null;
+        const errorBody = (await response.json().catch(() => null)) as {
+          detail?: string;
+        } | null;
         throw new Error(errorBody?.detail ?? "Could not load project details.");
       }
 
@@ -368,12 +372,15 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIsIngestingDocuments(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ingest`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/ingest`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
         },
-      });
+      );
 
       await handleProtectedResponse(response);
 
@@ -406,17 +413,20 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIsRetrieving(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/query`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: retrieveQuery.trim(),
+            top_k: 5,
+          }),
         },
-        body: JSON.stringify({
-          query: retrieveQuery.trim(),
-          top_k: 5,
-        }),
-      });
+      );
 
       await handleProtectedResponse(response);
 
@@ -715,7 +725,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               {retrieveResult.results.length > 0 ? (
                 <div className="mt-3 space-y-3">
                   {retrieveResult.results.map((result) => (
-                    <div key={result.id} className="rounded-box bg-base-100 p-3">
+                    <div
+                      key={result.id}
+                      className="rounded-box bg-base-100 p-3"
+                    >
                       <p className="font-medium text-primary">{result.id}</p>
                       <p className="mt-1 text-xs opacity-60">
                         Distance: {result.distance}
@@ -782,9 +795,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                   </th>
                 </tr>
                 <tr>
-                  <th>
-
-                  </th>
+                  <th></th>
                   <th>Name</th>
                   <th>Document ID</th>
                   <th>Status</th>
@@ -793,7 +804,6 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               </thead>
 
               <tbody>
-
                 {documentList.map((info, index) => (
                   <tr key={info.doc_id}>
                     <th>
@@ -807,17 +817,17 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       </span>
                     </td>
                     <td>
-                      <span className="text-accent">
-                        {`${info.doc_id}`}
-                      </span>
+                      <span className="text-accent">{`${info.doc_id}`}</span>
                     </td>
                     <td>
-                      <span className="text-warning">
-                        {`${info.status}`}
-                      </span>
+                      <span className="text-warning">{`${info.status}`}</span>
                     </td>
                     <td>
-                      <span className={info.ingested ? "text-success" : "text-error"}>
+                      <span
+                        className={
+                          info.ingested ? "text-success" : "text-error"
+                        }
+                      >
                         {info.ingested ? "True" : "False"}
                       </span>
                     </td>
@@ -827,9 +837,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
               <tfoot>
                 <tr>
-                  <th>
-
-                  </th>
+                  <th></th>
                   <th>Name</th>
                   <th>Document ID</th>
                   <th>Status</th>
@@ -861,7 +869,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             try {
               await retrieveDocumentInfo();
             } catch (error) {
-              console.error("Failed to refresh document list via retrieveDocumentInfo.", error);
+              console.error(
+                "Failed to refresh document list via retrieveDocumentInfo.",
+                error,
+              );
             }
           }}
         >

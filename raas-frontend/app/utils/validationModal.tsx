@@ -94,7 +94,9 @@ export default function ValidationModal({
           </>
         ) : (
           <>
-            <p className="mt-4 text-lg font-semibold">Loading project details</p>
+            <p className="mt-4 text-lg font-semibold">
+              Loading project details
+            </p>
             {currentProjectId ? (
               <p className="mt-2 text-sm opacity-70">ID: {currentProjectId}</p>
             ) : null}
@@ -126,7 +128,9 @@ export default function ValidationModal({
           <button
             className="btn btn-primary"
             onClick={handleValidate}
-            disabled={isValidatingProject || !currentProjectId || !currentProject}
+            disabled={
+              isValidatingProject || !currentProjectId || !currentProject
+            }
           >
             {isValidatingProject ? "Checking..." : confirmLabel}
           </button>
