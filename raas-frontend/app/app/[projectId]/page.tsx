@@ -425,7 +425,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       </div>
 
       <div className="flex flex-row justify-evenly p-3">
-        <button className="btn btn-xl btn-ghost btn-primary p-3">
+        <button className={`btn btn-xl btn-ghost btn-primary p-3 ${documentList.some((doc) => !doc.ingested) ? "" : "btn-disabled"}`}>
           <span>Ingest</span>
         </button>
         <button
@@ -441,12 +441,12 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           <span>Refresh List</span>
         </button>
         <button
-          className="btn btn-xl btn-ghost btn-error p-3"
+          className={`btn btn-xl btn-ghost btn-error p-3 ${documentList.length > 0 ? "" : "btn-disabled"}`}
           onClick={openDeleteModal}
         >
           <span>Delete</span>
         </button>
-        <button className="btn btn-xl btn-ghost btn-warning p-3">
+        <button className={`btn btn-xl btn-ghost btn-warning p-3 ${documentList.some((doc) => doc.ingested) ? "" : "btn-disabled"}`  }>
           <span>Retrieve</span>
         </button>
       </div>
