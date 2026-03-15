@@ -20,15 +20,13 @@ fly.toml
 
 ## Local Run
 
-Add these to `.env`:
+Create your local env file from [`.env.example`](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/.env.example):
 
-```env
-OPENAI_API_KEY=your_key_here
-ADMIN_PASSWORD=choose_a_password_you_will_use_for_admin_sign_in
-ADMIN_SESSION_SECRET=generate_a_long_random_secret_for_cookie_signing
-PROJECT_API_KEY_SECRET=set_a_stable_secret_for_shared_or_prod_use
-CORS_ALLOWED_ORIGINS=http://localhost:3000
+```bash
+cp .env.example .env
 ```
+
+Then update the values in `.env` for your local setup.
 
 Start backend dependencies:
 

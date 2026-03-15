@@ -29,6 +29,8 @@ RaaS handles retrieval only. Use it as a base layer for your own document pipeli
 
 You can keep this flow as-is, or clone the repo and customize the ingestion, storage, and retrieval steps for your own use case.
 
+For local setup, start from [`.env.example`](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/.env.example) and copy it to `.env`.
+
 ## Retrieval Example
 
 Direct API query:
