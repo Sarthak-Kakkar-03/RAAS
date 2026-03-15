@@ -9,6 +9,8 @@ import ValidationModal from "@/app/utils/validationModal";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const ADMIN_AUTH_REQUIRED = "ADMIN_AUTH_REQUIRED";
+
 export default function AppPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectPublicInfo[]>([]);
@@ -189,9 +191,9 @@ export default function AppPage() {
           detail?: string;
         } | null;
         if (response.status === 401) {
-          setCreateModalOpen(false);
           setPendingAdminAction("create");
           setAdminModalOpen(true);
+          throw new Error(ADMIN_AUTH_REQUIRED);
         }
         throw new Error(errorBody?.detail ?? "Project creation failed");
       }
@@ -204,7 +206,11 @@ export default function AppPage() {
       ]);
       setReceivedProjectList(true);
       setCreateProjectName("");
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === ADMIN_AUTH_REQUIRED) {
+        return;
+      }
+
       setCreateModalError("Could not create project.");
     } finally {
       setIsCreatingProject(false);
@@ -239,6 +245,7 @@ export default function AppPage() {
           setDeleteModalOpen(false);
           setPendingAdminAction("delete");
           setAdminModalOpen(true);
+          throw new Error(ADMIN_AUTH_REQUIRED);
         }
         throw new Error(errorBody?.detail ?? "Project deletion failed");
       }
@@ -250,6 +257,10 @@ export default function AppPage() {
       setDeleteProjectId("");
       setReceivedProjectList(true);
     } catch (error) {
+      if (error instanceof Error && error.message === ADMIN_AUTH_REQUIRED) {
+        return;
+      }
+
       if (error instanceof Error) {
         setDeleteModalError(error.message);
       } else {

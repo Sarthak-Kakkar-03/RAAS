@@ -89,9 +89,15 @@ README.md
 
 ```env
 OPENAI_API_KEY=your_key_here
+ADMIN_PASSWORD=choose_a_password_you_will_use_for_admin_sign_in
+ADMIN_SESSION_SECRET=generate_a_long_random_secret_for_cookie_signing
 PROJECT_API_KEY_SECRET=optional-for-local-dev-set-for-shared-use
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
+
+`ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` guidance:
+- `ADMIN_PASSWORD` is required for project create/delete access
+- `ADMIN_SESSION_SECRET` should be long, random, and kept stable between restarts
 
 `PROJECT_API_KEY_SECRET` guidance:
 - Optional for local single-user/dev use

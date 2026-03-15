@@ -2,16 +2,20 @@ import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 import type { AdminSessionResponse } from "@/types/api";
 
 export async function getAdminSession() {
-  const response = await fetch(`${API_BASE_URL}/auth/session`, {
-    method: "GET",
-    credentials: "include",
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/session`, {
+      method: "GET",
+      credentials: "include",
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as AdminSessionResponse;
+  } catch {
     return null;
   }
-
-  return (await response.json()) as AdminSessionResponse;
 }
 
 export async function loginAdmin(password: string) {

@@ -61,6 +61,14 @@ export default function AdminAuthModal({
     }
   }
 
+  function handleClose() {
+    if (isSubmitting) {
+      return;
+    }
+
+    onClose();
+  }
+
   return (
     <div className="modal modal-open">
       <div className="modal-box">
@@ -83,7 +91,11 @@ export default function AdminAuthModal({
         ) : null}
 
         <div className="modal-action">
-          <button className="btn btn-ghost" onClick={onClose}>
+          <button
+            className="btn btn-ghost"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </button>
           <button
@@ -98,7 +110,7 @@ export default function AdminAuthModal({
       <button
         className="modal-backdrop"
         aria-label="Close admin auth modal"
-        onClick={onClose}
+        onClick={handleClose}
       />
     </div>
   );
