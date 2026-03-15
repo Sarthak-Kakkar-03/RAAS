@@ -354,7 +354,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           <div>
             <h2 className="font-bold text-3xl text-white">Document List</h2>
           </div>
-          <div className="max-h-[420px] overflow-x-auto overflow-y-auto">
+          <div className="max-h-105 overflow-x-auto overflow-y-auto">
             <table className="table">
               <thead>
                 <tr>
@@ -366,9 +366,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                 </tr>
                 <tr>
                   <th>
-                    <label>
-                      <input type="checkbox" className="checkbox" />
-                    </label>
+
                   </th>
                   <th>Name</th>
                   <th>Document ID</th>
@@ -379,12 +377,12 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
               <tbody>
 
-                {documentList.map((info) => (
+                {documentList.map((info, index) => (
                   <tr>
                     <th>
-                      <label>
-                        <input type="checkbox" className="checkbox" />
-                      </label>
+                      <span className="text-xl">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
                     </th>
                     <td>
                       <span className="font-bold text-lg text-primary">
@@ -413,9 +411,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               <tfoot>
                 <tr>
                   <th>
-                    <label>
-                      <input type="checkbox" className="checkbox" />
-                    </label>
+
                   </th>
                   <th>Name</th>
                   <th>Document ID</th>
