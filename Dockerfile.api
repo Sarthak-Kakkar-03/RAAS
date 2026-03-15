@@ -25,15 +25,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-x64.tar.xz -o /tmp/node.tar.xz \
-    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
-    && rm /tmp/node.tar.xz
-
 RUN python -m pip install --no-cache-dir uv==0.4.30
 
 COPY pyproject.toml README.md ./
 COPY api ./api
 RUN uv sync --no-dev
+
+COPY --from=frontend-builder /usr/local/bin/node /usr/local/bin/node
 
 COPY --from=frontend-builder /app/raas-frontend/.next/standalone ./raas-frontend
 COPY --from=frontend-builder /app/raas-frontend/.next/static ./raas-frontend/.next/static
