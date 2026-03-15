@@ -1,6 +1,6 @@
 # Retrieval-as-a-Service (RaaS)
 
-Self-hosted retrieval backend for RAG applications.
+Self-hosted retrieval backend for RAG applications, with a small convenience frontend for managing projects and documents.
 
 Upload documents, index them into Chroma, and query top-k relevant chunks through a project-scoped API.
 
@@ -21,7 +21,11 @@ RaaS does not include answer generation or chat orchestration. Your app calls Ra
 Client / App Server
         |
         v
-FastAPI (RaaS API)
+Fly / Local Container
+        |
+        +--> Next.js convenience frontend
+        |
+        +--> FastAPI (RaaS API)
         |
         +--> SQLite (projects, jobs, document registry)
         |
@@ -40,6 +44,7 @@ Retrieval path:
 
 - Project creation with per-project API key
 - Auth-protected project endpoints
+- Convenience frontend for project/document management
 - PDF upload and raw file storage
 - Document registry with ingest status
 - Synchronous ingest endpoint
@@ -51,6 +56,7 @@ Retrieval path:
 ## Tech Stack
 
 - API: FastAPI
+- Frontend: Next.js
 - Language: Python 3.12
 - Vector DB: Chroma
 - Embeddings: OpenAI (`langchain-openai`)
@@ -67,10 +73,14 @@ api/
   models/     # pydantic schemas
   routes/     # HTTP routes
   services/   # ingest, indexing, retrieval, registries
+raas-frontend/
+  app/        # convenience UI
+start.sh      # launches chroma, api, frontend
 data/
   raw/        # uploaded files
   registry.db # sqlite persistence
 docker-compose.yml
+fly.toml
 README.md
 ```
 
@@ -81,6 +91,7 @@ README.md
 ```env
 OPENAI_API_KEY=your_key_here
 PROJECT_API_KEY_SECRET=optional-for-local-dev-set-for-shared-use
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
 
 `PROJECT_API_KEY_SECRET` guidance:
@@ -103,7 +114,15 @@ curl http://localhost:8000/health
 curl http://localhost:8001/api/v1/heartbeat
 ```
 
-4. Stop services:
+4. Run the frontend separately:
+
+```bash
+cd raas-frontend
+npm install
+npm run dev
+```
+
+5. Stop services:
 
 ```bash
 docker compose down
@@ -134,6 +153,73 @@ Run Chroma separately (for example with Docker):
 
 ```bash
 docker compose up -d chroma
+```
+
+Run the frontend in another terminal:
+
+```bash
+cd raas-frontend
+npm install
+npm run dev
+```
+
+## Fly.io Deployment
+
+This repo now supports a single Fly app that runs:
+- Next.js convenience frontend
+- FastAPI API
+- Chroma
+
+All persistent state is mounted under `/app/data` on one Fly volume:
+- SQLite database at `data/registry.db`
+- uploaded source files under `data/raw/`
+- Chroma persistence under `data/chroma/`
+
+This is a pragmatic MVP deployment, not a high-durability architecture. It is acceptable if you are comfortable with the operational risk of colocating API, SQLite, uploads, and Chroma on one machine/volume.
+
+### Deployment Files
+
+- `fly.toml` defines the Fly app and mounts `/app/data`
+- `Dockerfile.api` builds one image for frontend + API + Chroma
+- `start.sh` starts Chroma, Uvicorn, and Next.js
+- `raas-frontend/next.config.ts` rewrites `/api/*` to the local FastAPI process
+
+### Required Fly Secrets
+
+Set these before deploying:
+
+```bash
+fly secrets set \
+  OPENAI_API_KEY=your_key_here \
+  PROJECT_API_KEY_SECRET=replace_with_a_stable_secret \
+  CORS_ALLOWED_ORIGINS=https://your-app.fly.dev
+```
+
+Optional overrides:
+
+```bash
+fly secrets set OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+### Create the Volume
+
+Create the volume once in the same region as the app:
+
+```bash
+fly volumes create raas_data --region iad --size 10
+```
+
+### Deploy
+
+```bash
+fly launch --no-deploy
+fly deploy
+```
+
+Health checks go through:
+
+```text
+/api/health
 ```
 
 ## API Endpoints
@@ -203,7 +289,7 @@ curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
 - Projects and jobs are stored in `data/registry.db`
 - Document registry metadata is stored in `data/registry.db`
 - Uploaded files are stored at `data/raw/<project_id>/`
-- Chroma data is persisted through the `chroma_data` Docker volume
+- Chroma data is persisted at `data/chroma/`
 
 ## Customization Points
 
@@ -215,7 +301,8 @@ curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
 
 ## Current Limitations
 
-- No frontend in this repo
+- The frontend is a convenience/admin UI, not a hardened product surface
 - No automated test suite yet
-- SQLite + in-process background tasks are good for MVP, not high-scale production
+- SQLite + local disk + in-process background tasks are good for MVP, not high-scale production
+- Single-app Fly deployment means one machine carries frontend, API, Chroma, and persistence concerns
 - OCR for scanned PDFs is not implemented in current ingest flow

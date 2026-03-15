@@ -1,0 +1,11 @@
+.git
+.DS_Store
+.env
+.venv
+__pycache__
+.ruff_cache
+.pre-commit-cache
+data
+node_modules
+raas-frontend/node_modules
+raas-frontend/.next

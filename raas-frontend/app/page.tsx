@@ -4,9 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HealthResponse } from "@/types/api";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
+import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
 const HEALTH_CHECK_INTERVAL_MS = 15000;
 
 export default function Home() {
