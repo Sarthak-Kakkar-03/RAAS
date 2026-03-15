@@ -156,7 +156,7 @@ This is a pragmatic MVP deployment, not a high-durability architecture. It is ac
 ### Deployment Files
 
 - `fly.toml` defines the Fly app and mounts `/app/data`
-- `Dockerfile.api` builds one image for frontend + API + Chroma
+- `Dockerfile` builds one image for frontend + API + Chroma
 - `start.sh` starts Chroma, Uvicorn, and Next.js
 - `raas-frontend/next.config.ts` rewrites `/api/*` to the local FastAPI process
 

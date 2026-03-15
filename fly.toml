@@ -2,7 +2,7 @@ app = "raas"
 primary_region = "iad"
 
 [build]
-  dockerfile = "Dockerfile.api"
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8080"
