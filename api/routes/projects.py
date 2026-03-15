@@ -19,6 +19,7 @@ from api.services.doc_registry import (
 )
 from api.services.project_registry import create_project as create_project_record
 from api.services.project_registry import delete_project as delete_project_record
+from api.services.project_registry import get_project as get_project_record
 from api.services.project_registry import list_projects as list_project_records
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -50,6 +51,15 @@ def create_project(body: ProjectCreate):
 def list_projects():
     """List public project records ordered by creation time."""
     return list_project_records()
+
+
+@router.get("/{project_id}", response_model=ProjectPublic)
+def get_project(project_id: str):
+    """Return the public project record for a specific project id."""
+    project = get_project_record(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
 
 
 UPLOAD_FILE = File(...)

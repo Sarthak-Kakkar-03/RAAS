@@ -8,6 +8,8 @@ type ValidationModalProps = {
   base_url: string;
   isOpen: boolean;
   project: ProjectPublicInfo | null;
+  projectId?: string;
+  projectNameStatus?: string;
   onClose: () => void;
   onValidated: (apiKey: string) => void;
   confirmLabel?: string;
@@ -18,6 +20,8 @@ export default function ValidationModal({
   base_url,
   isOpen,
   project,
+  projectId,
+  projectNameStatus = "",
   onClose,
   onValidated,
   confirmLabel = "Open Documents",
@@ -35,13 +39,18 @@ export default function ValidationModal({
     }
   }, [isOpen]);
 
-  if (!isOpen || !project) {
+  if (!isOpen) {
     return null;
   }
-
   const currentProject = project;
+  const currentProjectId = currentProject?.id ?? projectId ?? "";
 
   async function handleValidate() {
+    if (!currentProjectId) {
+      setModalError("Project details are still loading.");
+      return;
+    }
+
     if (!projectApiKey.trim()) {
       setModalError("Enter the project API key.");
       return;
@@ -53,7 +62,7 @@ export default function ValidationModal({
     try {
       const isValid = await validateProjectKey(
         base_url,
-        currentProject.id,
+        currentProjectId,
         projectApiKey.trim(),
       );
 
@@ -63,7 +72,7 @@ export default function ValidationModal({
       }
 
       sessionStorage.setItem(
-        `project_api_key:${currentProject.id}`,
+        `project_api_key:${currentProjectId}`,
         projectApiKey.trim(),
       );
       onValidated(projectApiKey.trim());
@@ -78,8 +87,24 @@ export default function ValidationModal({
     <div className="modal modal-open">
       <div className="modal-box">
         <h2 className="text-2xl font-bold">{title}</h2>
-        <p className="mt-4 text-lg font-semibold">{currentProject.name}</p>
-        <p className="mt-2 text-sm opacity-70">ID: {currentProject.id}</p>
+        {currentProject ? (
+          <>
+            <p className="mt-4 text-lg font-semibold">{currentProject.name}</p>
+            <p className="mt-2 text-sm opacity-70">ID: {currentProject.id}</p>
+          </>
+        ) : (
+          <>
+            <p className="mt-4 text-lg font-semibold">
+              Loading project details
+            </p>
+            {currentProjectId ? (
+              <p className="mt-2 text-sm opacity-70">ID: {currentProjectId}</p>
+            ) : null}
+            {projectNameStatus ? (
+              <p className="mt-3 text-sm opacity-70">{projectNameStatus}</p>
+            ) : null}
+          </>
+        )}
 
         <label className="form-control mt-6 w-full">
           <span className="label-text font-semibold">Project API key</span>
@@ -103,7 +128,7 @@ export default function ValidationModal({
           <button
             className="btn btn-primary"
             onClick={handleValidate}
-            disabled={isValidatingProject}
+            disabled={isValidatingProject || !currentProjectId}
           >
             {isValidatingProject ? "Checking..." : confirmLabel}
           </button>

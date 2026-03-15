@@ -2,10 +2,12 @@
 import type {
   DocumentInfo,
   IngestBatchStatus,
+  ProjectPublicInfo,
   QueryResponse,
   UploadDocumentStatus,
 } from "@/types/api";
-import { use, useEffect, useState } from "react";
+import ValidationModal from "@/app/utils/validationModal";
+import { use, useEffect, useEffectEvent, useState } from "react";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_RAAS_API_BASE_URL ?? "http://localhost:8000";
@@ -18,6 +20,12 @@ type ProjectDashboardPageProps = {
 
 export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const { projectId } = use(params);
+  const [validationModalOpen, setValidationModalOpen] = useState(false);
+  const [validationProject, setValidationProject] =
+    useState<ProjectPublicInfo | null>(null);
+  const [isLoadingValidationProject, setIsLoadingValidationProject] =
+    useState(true);
+  const [validationProjectError, setValidationProjectError] = useState("");
   const [documentList, setDocumentList] = useState<DocumentInfo[]>([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -32,18 +40,68 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
   const [ingestModalOpen, setIngestModalOpen] = useState(false);
   const [ingestModalError, setIngestModalError] = useState("");
-  const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(null);
+  const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(
+    null,
+  );
   const [isIngestingDocuments, setIsIngestingDocuments] = useState(false);
   const [retrieveModalOpen, setRetrieveModalOpen] = useState(false);
   const [retrieveQuery, setRetrieveQuery] = useState("");
   const [retrieveModalError, setRetrieveModalError] = useState("");
-  const [retrieveResult, setRetrieveResult] = useState<QueryResponse | null>(null);
+  const [retrieveResult, setRetrieveResult] = useState<QueryResponse | null>(
+    null,
+  );
   const [isRetrieving, setIsRetrieving] = useState(false);
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
   const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
 
-  async function retrieveDocumentInfo(signal?: AbortSignal) {
+  function openValidationModal() {
+    setValidationModalOpen(true);
+  }
+
+  function closeValidationModal() {
+    setValidationModalOpen(false);
+  }
+
+  function clearStoredProjectApiKey() {
+    sessionStorage.removeItem(`project_api_key:${projectId}`);
+  }
+
+  function getStoredProjectApiKey() {
     const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+
+    if (!apiKey) {
+      openValidationModal();
+      return null;
+    }
+
+    return apiKey;
+  }
+
+  async function handleProtectedResponse(response: Response) {
+    if (response.ok) {
+      return response;
+    }
+
+    const errorBody = (await response.json().catch(() => null)) as {
+      detail?: string;
+    } | null;
+    const detail = errorBody?.detail?.toLowerCase() ?? "";
+    const isAuthFailure =
+      response.status === 401 ||
+      response.status === 403 ||
+      detail.includes("invalid api key") ||
+      detail.includes("missing bearer token");
+
+    if (isAuthFailure) {
+      clearStoredProjectApiKey();
+      openValidationModal();
+    }
+
+    throw new Error(errorBody?.detail ?? "Protected request failed.");
+  }
+
+  async function retrieveDocumentInfo(signal?: AbortSignal) {
+    const apiKey = getStoredProjectApiKey();
 
     if (!apiKey) {
       return;
@@ -60,28 +118,74 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       },
     );
 
-    if (!response.ok) {
-      throw new Error("Failed to retrieve list of Documents from API");
-    }
+    await handleProtectedResponse(response);
 
     const data = (await response.json()) as { documents: DocumentInfo[] };
     setDocumentList(data.documents);
   }
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadValidationProject = useEffectEvent(async (signal: AbortSignal) => {
+    setIsLoadingValidationProject(true);
+    setValidationProjectError("");
 
-    async function loadDocuments() {
-      try {
-        await retrieveDocumentInfo(controller.signal);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+        method: "GET",
+        signal,
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as {
+          detail?: string;
+        } | null;
+        throw new Error(errorBody?.detail ?? "Could not load project details.");
+      }
+
+      const project = (await response.json()) as ProjectPublicInfo;
+      setValidationProject(project);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      setValidationProject(null);
+      setValidationProjectError(
+        error instanceof Error
+          ? error.message
+          : "Could not load project details.",
+      );
+    } finally {
+      setIsLoadingValidationProject(false);
+    }
+  });
+
+  const loadDocuments = useEffectEvent(async (signal: AbortSignal) => {
+    try {
+      await retrieveDocumentInfo(signal);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
       }
     }
+  });
 
-    void loadDocuments();
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadValidationProject(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!sessionStorage.getItem(`project_api_key:${projectId}`)) {
+      openValidationModal();
+      return;
+    }
+
+    const controller = new AbortController();
+    void loadDocuments(controller.signal);
 
     return () => {
       controller.abort();
@@ -173,10 +277,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       return;
     }
 
-    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+    const apiKey = getStoredProjectApiKey();
 
     if (!apiKey) {
-      setUploadModalError("Project session is not validated.");
       return;
     }
 
@@ -199,16 +302,16 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to upload document.");
-      }
+      await handleProtectedResponse(response);
 
       const data = (await response.json()) as UploadDocumentStatus;
       setUploadedDocument(data);
       setSelectedFile(null);
       await retrieveDocumentInfo();
-    } catch {
-      setUploadModalError("Could not upload document.");
+    } catch (error) {
+      setUploadModalError(
+        error instanceof Error ? error.message : "Could not upload document.",
+      );
     } finally {
       setIsUploadingDocument(false);
     }
@@ -220,10 +323,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       return;
     }
 
-    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+    const apiKey = getStoredProjectApiKey();
 
     if (!apiKey) {
-      setDeleteModalError("Project session is not validated.");
       return;
     }
 
@@ -244,25 +346,24 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to delete document.");
-      }
+      await handleProtectedResponse(response);
 
       setDeletedDocumentId(docId);
       setDeleteDocumentId("");
       await retrieveDocumentInfo();
-    } catch {
-      setDeleteModalError("Could not delete document.");
+    } catch (error) {
+      setDeleteModalError(
+        error instanceof Error ? error.message : "Could not delete document.",
+      );
     } finally {
       setIsDeletingDocument(false);
     }
   }
 
   async function handleIngestDocuments() {
-    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+    const apiKey = getStoredProjectApiKey();
 
     if (!apiKey) {
-      setIngestModalError("Project session is not validated.");
       return;
     }
 
@@ -271,22 +372,25 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIsIngestingDocuments(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ingest`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/ingest`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
         },
-      });
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to ingest documents.");
-      }
+      await handleProtectedResponse(response);
 
       const data = (await response.json()) as IngestBatchStatus;
       setIngestResult(data);
       await retrieveDocumentInfo();
-    } catch {
-      setIngestModalError("Could not ingest documents.");
+    } catch (error) {
+      setIngestModalError(
+        error instanceof Error ? error.message : "Could not ingest documents.",
+      );
     } finally {
       setIsIngestingDocuments(false);
     }
@@ -298,10 +402,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       return;
     }
 
-    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+    const apiKey = getStoredProjectApiKey();
 
     if (!apiKey) {
-      setRetrieveModalError("Project session is not validated.");
       return;
     }
 
@@ -310,29 +413,37 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIsRetrieving(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/query`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: retrieveQuery.trim(),
+            top_k: 5,
+          }),
         },
-        body: JSON.stringify({
-          query: retrieveQuery.trim(),
-          top_k: 5,
-        }),
-      });
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to retrieve response.");
-      }
+      await handleProtectedResponse(response);
 
       const data = (await response.json()) as QueryResponse;
       setRetrieveResult(data);
-    } catch {
-      setRetrieveModalError("Could not retrieve response.");
+    } catch (error) {
+      setRetrieveModalError(
+        error instanceof Error ? error.message : "Could not retrieve response.",
+      );
     } finally {
       setIsRetrieving(false);
     }
+  }
+
+  function handleProjectValidated() {
+    closeValidationModal();
+    void retrieveDocumentInfo();
   }
 
   function renderUploadModal() {
@@ -614,7 +725,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               {retrieveResult.results.length > 0 ? (
                 <div className="mt-3 space-y-3">
                   {retrieveResult.results.map((result) => (
-                    <div key={result.id} className="rounded-box bg-base-100 p-3">
+                    <div
+                      key={result.id}
+                      className="rounded-box bg-base-100 p-3"
+                    >
                       <p className="font-medium text-primary">{result.id}</p>
                       <p className="mt-1 text-xs opacity-60">
                         Distance: {result.distance}
@@ -681,9 +795,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                   </th>
                 </tr>
                 <tr>
-                  <th>
-
-                  </th>
+                  <th></th>
                   <th>Name</th>
                   <th>Document ID</th>
                   <th>Status</th>
@@ -692,7 +804,6 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               </thead>
 
               <tbody>
-
                 {documentList.map((info, index) => (
                   <tr key={info.doc_id}>
                     <th>
@@ -706,17 +817,17 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       </span>
                     </td>
                     <td>
-                      <span className="text-accent">
-                        {`${info.doc_id}`}
-                      </span>
+                      <span className="text-accent">{`${info.doc_id}`}</span>
                     </td>
                     <td>
-                      <span className="text-warning">
-                        {`${info.status}`}
-                      </span>
+                      <span className="text-warning">{`${info.status}`}</span>
                     </td>
                     <td>
-                      <span className={info.ingested ? "text-success" : "text-error"}>
+                      <span
+                        className={
+                          info.ingested ? "text-success" : "text-error"
+                        }
+                      >
                         {info.ingested ? "True" : "False"}
                       </span>
                     </td>
@@ -726,9 +837,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
               <tfoot>
                 <tr>
-                  <th>
-
-                  </th>
+                  <th></th>
                   <th>Name</th>
                   <th>Document ID</th>
                   <th>Status</th>
@@ -760,7 +869,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             try {
               await retrieveDocumentInfo();
             } catch (error) {
-              console.error("Failed to refresh document list via retrieveDocumentInfo.", error);
+              console.error(
+                "Failed to refresh document list via retrieveDocumentInfo.",
+                error,
+              );
             }
           }}
         >
@@ -784,6 +896,23 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       {renderDeleteModal()}
       {renderIngestModal()}
       {renderRetrieveModal()}
+      <ValidationModal
+        base_url={API_BASE_URL}
+        isOpen={validationModalOpen}
+        project={validationProject}
+        projectId={projectId}
+        projectNameStatus={
+          isLoadingValidationProject
+            ? "Loading project details."
+            : validationProjectError
+              ? `${validationProjectError} The API key cannot be revalidated until project details are available.`
+              : ""
+        }
+        onClose={closeValidationModal}
+        onValidated={handleProjectValidated}
+        confirmLabel="Continue"
+        title="Revalidate Project Session"
+      />
     </main>
   );
 }
