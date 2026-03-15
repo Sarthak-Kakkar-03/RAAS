@@ -48,7 +48,6 @@ Retrieval path:
 - PDF upload and raw file storage
 - Document registry with ingest status
 - Synchronous ingest endpoint
-- Asynchronous indexing jobs (`queued/running/completed/failed`)
 - Project-scoped retrieval with optional metadata filters
 - Chroma health check integration
 - Persistent project/job/document state in SQLite
@@ -140,29 +139,6 @@ Use this when you want to remove all persisted state, including:
 - uploaded files in `data/raw/`
 - Chroma vectors stored in the `chroma_data` volume
 
-## Local Run (Without Docker)
-
-If you prefer running directly with `uv`:
-
-```bash
-uv sync
-uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Run Chroma separately (for example with Docker):
-
-```bash
-docker compose up -d chroma
-```
-
-Run the frontend in another terminal:
-
-```bash
-cd raas-frontend
-npm install
-npm run dev
-```
-
 ## Fly.io Deployment
 
 This repo now supports a single Fly app that runs:
@@ -220,6 +196,44 @@ Health checks go through:
 
 ```text
 /api/health
+```
+
+### Post-Deployment Retrieval
+
+After deployment, your retrieval endpoint will be available at:
+
+```text
+https://your-app.fly.dev/api/projects/<PROJECT_ID>/query
+```
+
+Send requests with:
+- `Authorization: Bearer <PROJECT_API_KEY>`
+- `Content-Type: application/json`
+
+Request schema:
+
+```json
+{
+  "query": "What does this document say about pricing?",
+  "top_k": 5,
+  "where": {
+    "filename": "pricing.pdf"
+  }
+}
+```
+
+Field notes:
+- `query` is required
+- `top_k` is optional and controls how many chunks are returned
+- `where` is optional and can be used for metadata filtering
+
+Example:
+
+```bash
+curl -X POST https://your-app.fly.dev/api/projects/<PROJECT_ID>/query \
+  -H "Authorization: Bearer <PROJECT_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Summarize the refund policy","top_k":5}'
 ```
 
 ## API Endpoints
@@ -290,19 +304,3 @@ curl -s -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
 - Document registry metadata is stored in `data/registry.db`
 - Uploaded files are stored at `data/raw/<project_id>/`
 - Chroma data is persisted at `data/chroma/`
-
-## Customization Points
-
-- Swap embedding model in `api/core/config.py`
-- Tune chunk size/overlap in `api/services/chunker.py`
-- Add reranking or hybrid search in `api/services/retrieval_service.py`
-- Replace local file storage with object storage (S3/GCS)
-- Extend auth beyond API keys (JWT, service tokens, RBAC)
-
-## Current Limitations
-
-- The frontend is a convenience/admin UI, not a hardened product surface
-- No automated test suite yet
-- SQLite + local disk + in-process background tasks are good for MVP, not high-scale production
-- Single-app Fly deployment means one machine carries frontend, API, Chroma, and persistence concerns
-- OCR for scanned PDFs is not implemented in current ingest flow
