@@ -1,3 +1,4 @@
+import threading
 import time
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
@@ -18,29 +19,29 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _LOGIN_ATTEMPT_WINDOW_SECONDS = 300
 _MAX_LOGIN_ATTEMPTS = 5
 _login_attempts: dict[str, dict[str, float | int]] = {}
+_login_attempts_lock = threading.Lock()
 
 
 def _get_client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",", maxsplit=1)[0].strip()
     return request.client.host if request.client else "unknown"
 
 
 def _prune_login_attempts(now: float) -> None:
-    expired_ips = [
-        ip
-        for ip, state in _login_attempts.items()
-        if now - float(state["last_failed_at"]) > _LOGIN_ATTEMPT_WINDOW_SECONDS
-    ]
-    for ip in expired_ips:
-        _login_attempts.pop(ip, None)
+    with _login_attempts_lock:
+        expired_ips = [
+            ip
+            for ip, state in _login_attempts.items()
+            if now - float(state["last_failed_at"]) > _LOGIN_ATTEMPT_WINDOW_SECONDS
+        ]
+        for ip in expired_ips:
+            _login_attempts.pop(ip, None)
 
 
 def _enforce_login_rate_limit(ip: str) -> None:
     now = time.time()
     _prune_login_attempts(now)
-    state = _login_attempts.get(ip)
+    with _login_attempts_lock:
+        state = _login_attempts.get(ip)
     if not state:
         return
 
@@ -60,20 +61,22 @@ def _enforce_login_rate_limit(ip: str) -> None:
 
 def _record_failed_login(ip: str) -> None:
     now = time.time()
-    state = _login_attempts.get(ip)
-    if (
-        not state
-        or now - float(state["last_failed_at"]) > _LOGIN_ATTEMPT_WINDOW_SECONDS
-    ):
-        _login_attempts[ip] = {"attempts": 1, "last_failed_at": now}
-        return
+    with _login_attempts_lock:
+        state = _login_attempts.get(ip)
+        if (
+            not state
+            or now - float(state["last_failed_at"]) > _LOGIN_ATTEMPT_WINDOW_SECONDS
+        ):
+            _login_attempts[ip] = {"attempts": 1, "last_failed_at": now}
+            return
 
-    state["attempts"] = int(state["attempts"]) + 1
-    state["last_failed_at"] = now
+        state["attempts"] = int(state["attempts"]) + 1
+        state["last_failed_at"] = now
 
 
 def _reset_failed_logins(ip: str) -> None:
-    _login_attempts.pop(ip, None)
+    with _login_attempts_lock:
+        _login_attempts.pop(ip, None)
 
 
 def _set_admin_session_cookie(response: Response, token: str) -> None:

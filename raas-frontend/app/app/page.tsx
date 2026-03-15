@@ -11,6 +11,11 @@ import { useEffect, useState } from "react";
 
 const ADMIN_AUTH_REQUIRED = "ADMIN_AUTH_REQUIRED";
 
+type PendingAdminForm = {
+  createProjectName?: string;
+  deleteProjectId?: string;
+};
+
 export default function AppPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectPublicInfo[]>([]);
@@ -36,6 +41,7 @@ export default function AppPage() {
   const [pendingAdminAction, setPendingAdminAction] = useState<
     "create" | "delete" | null
   >(null);
+  const [pendingAdminForm, setPendingAdminForm] = useState<PendingAdminForm>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -93,7 +99,7 @@ export default function AppPage() {
 
   function openCreateModal() {
     setCreateModalError("");
-    setCreateProjectName("");
+    setCreateProjectName(pendingAdminForm.createProjectName ?? "");
     setCreatedNewProject(null);
     setCreateModalOpen(true);
     setCreateButtonActive(true);
@@ -103,6 +109,10 @@ export default function AppPage() {
     setCreateModalError("");
     setCreateProjectName("");
     setCreatedNewProject(null);
+    setPendingAdminForm((current) => ({
+      ...current,
+      createProjectName: undefined,
+    }));
     setCreateModalOpen(false);
     setCreateButtonActive(false);
   }
@@ -112,7 +122,7 @@ export default function AppPage() {
   }
 
   function openDeleteModal() {
-    setDeleteProjectId("");
+    setDeleteProjectId(pendingAdminForm.deleteProjectId ?? "");
     setDeleteModalError("");
     setDeletedProjectId("");
     setDeleteButtonActive(true);
@@ -124,6 +134,10 @@ export default function AppPage() {
     setDeleteModalError("");
     setDeletedProjectId("");
     setIsDeletingProject(false);
+    setPendingAdminForm((current) => ({
+      ...current,
+      deleteProjectId: undefined,
+    }));
     setDeleteButtonActive(false);
     setDeleteModalOpen(false);
   }
@@ -191,6 +205,10 @@ export default function AppPage() {
           detail?: string;
         } | null;
         if (response.status === 401) {
+          setPendingAdminForm((current) => ({
+            ...current,
+            createProjectName: createProjectName.trim(),
+          }));
           setPendingAdminAction("create");
           setAdminModalOpen(true);
           throw new Error(ADMIN_AUTH_REQUIRED);
@@ -206,12 +224,20 @@ export default function AppPage() {
       ]);
       setReceivedProjectList(true);
       setCreateProjectName("");
+      setPendingAdminForm((current) => ({
+        ...current,
+        createProjectName: undefined,
+      }));
     } catch (error) {
       if (error instanceof Error && error.message === ADMIN_AUTH_REQUIRED) {
         return;
       }
 
-      setCreateModalError("Could not create project.");
+      if (error instanceof Error) {
+        setCreateModalError(error.message);
+      } else {
+        setCreateModalError("Could not create project.");
+      }
     } finally {
       setIsCreatingProject(false);
       setCreateButtonActive(false);
@@ -242,6 +268,10 @@ export default function AppPage() {
           detail?: string;
         } | null;
         if (response.status === 401) {
+          setPendingAdminForm((current) => ({
+            ...current,
+            deleteProjectId: projectId,
+          }));
           setDeleteModalOpen(false);
           setPendingAdminAction("delete");
           setAdminModalOpen(true);
@@ -255,6 +285,10 @@ export default function AppPage() {
       );
       setDeletedProjectId(projectId);
       setDeleteProjectId("");
+      setPendingAdminForm((current) => ({
+        ...current,
+        deleteProjectId: undefined,
+      }));
       setReceivedProjectList(true);
     } catch (error) {
       if (error instanceof Error && error.message === ADMIN_AUTH_REQUIRED) {
@@ -515,6 +549,7 @@ export default function AppPage() {
         onClose={() => {
           setAdminModalError("");
           setPendingAdminAction(null);
+          setPendingAdminForm({});
           setAdminModalOpen(false);
         }}
         onSubmit={async (password) => {

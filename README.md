@@ -175,6 +175,7 @@ fly secrets set \
   OPENAI_API_KEY=your_key_here \
   ADMIN_PASSWORD=replace_with_a_single_admin_password \
   ADMIN_SESSION_SECRET=replace_with_a_stable_random_session_secret \
+  PROJECT_API_KEY_SECRET=replace_with_your_project_api_key_secret \
   CORS_ALLOWED_ORIGINS=https://your-app.fly.dev
 ```
 
