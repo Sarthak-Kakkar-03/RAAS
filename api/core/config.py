@@ -28,6 +28,10 @@ class Settings(BaseSettings):
         validate_default=True,
     )
     openai_embedding_model: str = Field(default="text-embedding-3-small")
+    admin_password: SecretStr = Field(default_factory=lambda: SecretStr(""))
+    admin_session_secret: SecretStr = Field(default_factory=lambda: SecretStr(""))
+    admin_session_max_age_seconds: int = Field(default=86400, ge=300)
+    admin_session_cookie_secure: bool = Field(default=False)
 
     @field_validator("openai_api_key")
     @classmethod

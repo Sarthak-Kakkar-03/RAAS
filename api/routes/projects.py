@@ -6,7 +6,7 @@ from dataclasses import asdict
 
 
 from api.models.schemas import ProjectCreate, ProjectOut, ProjectPublic
-from api.core.auth import get_bearer_token, require_project_key
+from api.core.auth import get_bearer_token, require_admin_session, require_project_key
 from api.services.chroma_repo import (
     delete_project_collection,
     get_or_create_project_collection,
@@ -26,7 +26,10 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 @router.post("", response_model=ProjectOut)
-def create_project(body: ProjectCreate):
+def create_project(
+    body: ProjectCreate,
+    _admin_session: dict = Depends(require_admin_session),
+):
     """Create a project and provision its backing Chroma collection."""
     project_id = uuid.uuid4().hex[:12]
     api_key = uuid.uuid4().hex
@@ -157,10 +160,12 @@ def validate_project(
 @router.delete("/{project_id}")
 def delete_project(
     project_id: str,
-    token: str = Depends(get_bearer_token),
+    _admin_session: dict = Depends(require_admin_session),
 ):
     """Delete a project and its associated storage after authorization."""
-    require_project_key(project_id=project_id, token=token)
+    project = get_project_record(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     try:
         delete_project_collection(project_id)

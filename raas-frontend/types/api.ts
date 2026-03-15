@@ -6,6 +6,11 @@ export type HealthResponse = {
   chroma_ok?: boolean;
 };
 
+export type AdminSessionResponse = {
+  ok: boolean;
+  authenticated: boolean;
+};
+
 export type ProjectPublicInfo = {
   id: string;
   name: string;

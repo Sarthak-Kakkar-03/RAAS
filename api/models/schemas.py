@@ -6,6 +6,10 @@ class ProjectCreate(BaseModel):
     name: str
 
 
+class AdminLoginIn(BaseModel):
+    password: str = Field(..., min_length=1)
+
+
 class ProjectOut(BaseModel):
     id: str
     name: str
