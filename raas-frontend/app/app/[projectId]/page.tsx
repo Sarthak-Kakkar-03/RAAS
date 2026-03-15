@@ -756,7 +756,13 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         </button>
         <button
           className="btn btn-xl btn-ghost btn-accent p-3"
-          onClick={() => void retrieveDocumentInfo()}
+          onClick={async () => {
+            try {
+              await retrieveDocumentInfo();
+            } catch (error) {
+              console.error("Failed to refresh document list via retrieveDocumentInfo.", error);
+            }
+          }}
         >
           <span>Refresh List</span>
         </button>
