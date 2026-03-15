@@ -239,12 +239,12 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       </label>
                     </th>
                     <td>
-                      <span>
+                      <span className="font-bold text-lg text-primary">
                         {`${info.filename}`}
                       </span>
                     </td>
                     <td>
-                      <span>
+                      <span className="text-accent">
                         {`${info.doc_id}`}
                       </span>
                     </td>
@@ -254,8 +254,8 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       </span>
                     </td>
                     <td>
-                      <span>
-                        {`${info.ingested}`}
+                      <span className={info.ingested ? "text-success" : "text-error"}>
+                        {info.ingested ? "True" : "False"}
                       </span>
                     </td>
                   </tr>
