@@ -22,7 +22,7 @@ ENV CHROMA_PERSIST_DIR=/app/data/chroma
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates libgcc-s1 libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --no-cache-dir uv==0.4.30
