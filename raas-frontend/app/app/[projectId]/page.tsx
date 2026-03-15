@@ -20,6 +20,11 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [uploadedDocument, setUploadedDocument] =
     useState<UploadDocumentStatus | null>(null);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteDocumentId, setDeleteDocumentId] = useState("");
+  const [deleteModalError, setDeleteModalError] = useState("");
+  const [deletedDocumentId, setDeletedDocumentId] = useState("");
+  const [isDeletingDocument, setIsDeletingDocument] = useState(false);
 
   async function retrieveDocumentInfo(signal?: AbortSignal) {
     const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
@@ -75,11 +80,33 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   }
 
   function closeUploadModal() {
+    if (isUploadingDocument) {
+      return;
+    }
+
     setSelectedFile(null);
     setUploadModalError("");
     setUploadedDocument(null);
     setIsUploadingDocument(false);
     setUploadModalOpen(false);
+  }
+
+  function openDeleteModal() {
+    setDeleteDocumentId("");
+    setDeleteModalError("");
+    setDeletedDocumentId("");
+    setDeleteModalOpen(true);
+  }
+
+  function closeDeleteModal() {
+    if (isDeletingDocument) {
+      return;
+    }
+
+    setDeleteDocumentId("");
+    setDeleteModalError("");
+    setDeletedDocumentId("");
+    setDeleteModalOpen(false);
   }
 
   async function handleUploadDocument() {
@@ -129,6 +156,50 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     }
   }
 
+  async function handleDeleteDocument() {
+    if (!deleteDocumentId.trim()) {
+      setDeleteModalError("Enter the document ID.");
+      return;
+    }
+
+    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+
+    if (!apiKey) {
+      setDeleteModalError("Project session is not validated.");
+      return;
+    }
+
+    setDeleteModalError("");
+    setDeletedDocumentId("");
+    setIsDeletingDocument(true);
+
+    try {
+      const docId = deleteDocumentId.trim();
+
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/docs/${docId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete document.");
+      }
+
+      setDeletedDocumentId(docId);
+      setDeleteDocumentId("");
+      await retrieveDocumentInfo();
+    } catch {
+      setDeleteModalError("Could not delete document.");
+    } finally {
+      setIsDeletingDocument(false);
+    }
+  }
+
   function renderUploadModal() {
     if (!uploadModalOpen) {
       return null;
@@ -170,15 +241,23 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           ) : null}
 
           <div className="modal-action">
-            <button className="btn btn-ghost" onClick={closeUploadModal}>
+            <button
+              className="btn btn-ghost"
+              onClick={closeUploadModal}
+              disabled={isUploadingDocument}
+            >
               {uploadedDocument ? "Close" : "Cancel"}
             </button>
             <button
               className="btn btn-success"
               onClick={handleUploadDocument}
-              disabled={isUploadingDocument}
+              disabled={isUploadingDocument || uploadedDocument !== null}
             >
-              {isUploadingDocument ? "Uploading..." : "Upload"}
+              {isUploadingDocument
+                ? "Uploading..."
+                : uploadedDocument
+                  ? "Uploaded"
+                  : "Upload"}
             </button>
           </div>
         </div>
@@ -186,6 +265,75 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           className="modal-backdrop"
           aria-label="Close upload document modal"
           onClick={closeUploadModal}
+        />
+      </div>
+    );
+  }
+
+  function renderDeleteModal() {
+    if (!deleteModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box">
+          <h1 className="text-lg font-bold">Delete Document</h1>
+          <p className="mt-2 text-sm opacity-70">
+            Enter a document ID to permanently delete it from this project.
+          </p>
+
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Document ID</span>
+            <input
+              type="text"
+              className="input input-bordered mt-2 w-full"
+              value={deleteDocumentId}
+              onChange={(event) => setDeleteDocumentId(event.target.value)}
+              placeholder="Enter document ID"
+            />
+          </label>
+
+          {deleteModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {deleteModalError}
+            </p>
+          ) : null}
+
+          {deletedDocumentId ? (
+            <div className="mt-4 rounded-box bg-success/10 p-4 text-sm">
+              <p className="font-semibold text-success">
+                Document deleted successfully.
+              </p>
+              <p className="mt-2">Document ID: {deletedDocumentId}</p>
+            </div>
+          ) : null}
+
+          <div className="modal-action">
+            <button
+              className="btn btn-ghost"
+              onClick={closeDeleteModal}
+              disabled={isDeletingDocument}
+            >
+              {deletedDocumentId ? "Close" : "Cancel"}
+            </button>
+            <button
+              className="btn btn-error"
+              onClick={handleDeleteDocument}
+              disabled={isDeletingDocument || deletedDocumentId !== ""}
+            >
+              {isDeletingDocument
+                ? "Deleting..."
+                : deletedDocumentId
+                  ? "Deleted"
+                  : "Delete"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close delete document modal"
+          onClick={closeDeleteModal}
         />
       </div>
     );
@@ -249,7 +397,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       </span>
                     </td>
                     <td>
-                      <span>
+                      <span className="text-warning">
                         {`${info.status}`}
                       </span>
                     </td>
@@ -296,11 +444,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         >
           <span>Refresh List</span>
         </button>
-        <button className="btn btn-xl btn-ghost btn-error p-3">
+        <button
+          className="btn btn-xl btn-ghost btn-error p-3"
+          onClick={openDeleteModal}
+        >
           <span>Delete</span>
+        </button>
+        <button className="btn btn-xl btn-ghost btn-warning p-3">
+          <span>Retrieve</span>
         </button>
       </div>
       {renderUploadModal()}
+      {renderDeleteModal()}
     </main>
   );
 }
