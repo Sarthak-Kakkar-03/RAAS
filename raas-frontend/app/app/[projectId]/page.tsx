@@ -2,6 +2,7 @@
 import type {
   DocumentInfo,
   IngestBatchStatus,
+  QueryResponse,
   UploadDocumentStatus,
 } from "@/types/api";
 import { use, useEffect, useState } from "react";
@@ -33,7 +34,13 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const [ingestModalError, setIngestModalError] = useState("");
   const [ingestResult, setIngestResult] = useState<IngestBatchStatus | null>(null);
   const [isIngestingDocuments, setIsIngestingDocuments] = useState(false);
+  const [retrieveModalOpen, setRetrieveModalOpen] = useState(false);
+  const [retrieveQuery, setRetrieveQuery] = useState("");
+  const [retrieveModalError, setRetrieveModalError] = useState("");
+  const [retrieveResult, setRetrieveResult] = useState<QueryResponse | null>(null);
+  const [isRetrieving, setIsRetrieving] = useState(false);
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
+  const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
 
   async function retrieveDocumentInfo(signal?: AbortSignal) {
     const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
@@ -117,6 +124,17 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIngestModalOpen(true);
   }
 
+  function openRetrieveModal() {
+    if (!canRetrieveDocuments) {
+      return;
+    }
+
+    setRetrieveQuery("");
+    setRetrieveModalError("");
+    setRetrieveResult(null);
+    setRetrieveModalOpen(true);
+  }
+
   function closeDeleteModal() {
     if (isDeletingDocument) {
       return;
@@ -136,6 +154,17 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setIngestModalError("");
     setIngestResult(null);
     setIngestModalOpen(false);
+  }
+
+  function closeRetrieveModal() {
+    if (isRetrieving) {
+      return;
+    }
+
+    setRetrieveQuery("");
+    setRetrieveModalError("");
+    setRetrieveResult(null);
+    setRetrieveModalOpen(false);
   }
 
   async function handleUploadDocument() {
@@ -263,6 +292,49 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     }
   }
 
+  async function handleRetrieveQuery() {
+    if (!retrieveQuery.trim()) {
+      setRetrieveModalError("Enter a query.");
+      return;
+    }
+
+    const apiKey = sessionStorage.getItem(`project_api_key:${projectId}`);
+
+    if (!apiKey) {
+      setRetrieveModalError("Project session is not validated.");
+      return;
+    }
+
+    setRetrieveModalError("");
+    setRetrieveResult(null);
+    setIsRetrieving(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}/query`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: retrieveQuery.trim(),
+          top_k: 5,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to retrieve response.");
+      }
+
+      const data = (await response.json()) as QueryResponse;
+      setRetrieveResult(data);
+    } catch {
+      setRetrieveModalError("Could not retrieve response.");
+    } finally {
+      setIsRetrieving(false);
+    }
+  }
+
   function renderUploadModal() {
     if (!uploadModalOpen) {
       return null;
@@ -270,7 +342,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
     return (
       <div className="modal modal-open gap-3">
-        <div className="modal-box">
+        <div className="modal-box max-h-[80vh] overflow-y-auto">
           <h1 className="text-lg font-bold">Upload Document</h1>
           <p className="mt-2 text-sm opacity-70">
             Select a file to upload into this project.
@@ -484,6 +556,105 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     );
   }
 
+  function renderRetrieveModal() {
+    if (!retrieveModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box">
+          <h1 className="text-lg font-bold">Retrieve</h1>
+          <p className="mt-2 text-sm opacity-70">
+            Ask a query against the ingested documents in this project.
+          </p>
+          <div className="mt-4 rounded-box border border-warning/30 bg-warning/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-warning">
+              Dev Endpoint
+            </p>
+            <p className="mt-2 text-sm">
+              Use this route for direct retrieval testing in other dev work:
+            </p>
+            <div className="mt-3 rounded-box bg-base-100 px-3 py-2 font-mono text-xs break-all">
+              <span className="font-semibold text-warning">POST</span>{" "}
+              {API_BASE_URL}/projects/{projectId}/query
+            </div>
+          </div>
+
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Query</span>
+            <textarea
+              className="textarea textarea-bordered mt-2 min-h-28 w-full"
+              value={retrieveQuery}
+              onChange={(event) => setRetrieveQuery(event.target.value)}
+              placeholder="Ask a question about this project's documents"
+            />
+          </label>
+
+          {retrieveModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {retrieveModalError}
+            </p>
+          ) : null}
+
+          {isRetrieving ? (
+            <div className="mt-4 flex items-center gap-3 text-sm opacity-80">
+              <span className="loading loading-infinity loading-md"></span>
+              <span>Retrieving response. Please wait.</span>
+            </div>
+          ) : null}
+
+          {retrieveResult ? (
+            <div className="mt-4 max-h-[40vh] overflow-y-auto rounded-box bg-base-300 p-4 text-sm">
+              <p className="font-semibold text-success">
+                Retrieved {retrieveResult.results.length} result
+                {retrieveResult.results.length === 1 ? "" : "s"} in{" "}
+                {retrieveResult.latency_ms} ms.
+              </p>
+              {retrieveResult.results.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {retrieveResult.results.map((result) => (
+                    <div key={result.id} className="rounded-box bg-base-100 p-3">
+                      <p className="font-medium text-primary">{result.id}</p>
+                      <p className="mt-1 text-xs opacity-60">
+                        Distance: {result.distance}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap">{result.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2">No results were returned for this query.</p>
+              )}
+            </div>
+          ) : null}
+
+          <div className="modal-action">
+            <button
+              className="btn btn-ghost"
+              onClick={closeRetrieveModal}
+              disabled={isRetrieving}
+            >
+              {retrieveResult ? "Close" : "Cancel"}
+            </button>
+            <button
+              className="btn btn-warning"
+              onClick={handleRetrieveQuery}
+              disabled={isRetrieving}
+            >
+              {isRetrieving ? "Retrieving" : "Retrieve"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close retrieve modal"
+          onClick={closeRetrieveModal}
+        />
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen flex flex-col justify-between items-stretch bg-base-200 px-8 py-12">
       <div>
@@ -595,13 +766,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
         >
           <span>Delete</span>
         </button>
-        <button className={`btn btn-xl btn-ghost btn-warning p-3 ${documentList.some((doc) => doc.ingested) ? "" : "btn-disabled"}`  }>
+        <button
+          className={`btn btn-xl btn-ghost btn-warning p-3 ${canRetrieveDocuments ? "" : "btn-disabled"}`}
+          onClick={openRetrieveModal}
+          disabled={!canRetrieveDocuments}
+        >
           <span>Retrieve</span>
         </button>
       </div>
       {renderUploadModal()}
       {renderDeleteModal()}
       {renderIngestModal()}
+      {renderRetrieveModal()}
     </main>
   );
 }

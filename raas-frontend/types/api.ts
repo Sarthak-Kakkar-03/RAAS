@@ -45,3 +45,17 @@ export type IngestBatchStatus = {
   ingested_count: number;
   failed_count: number;
 };
+
+export type QueryHit = {
+  id: string;
+  text: string;
+  metadata: Record<string, unknown>;
+  distance: number;
+};
+
+export type QueryResponse = {
+  ok: boolean;
+  results: QueryHit[];
+  latency_ms: number;
+  retrieval_debug: Record<string, unknown>;
+};
