@@ -7,7 +7,7 @@ CHROMA_HOST="${CHROMA_HOST:-127.0.0.1}"
 CHROMA_PORT="${CHROMA_PORT:-8001}"
 CHROMA_PERSIST_DIR="${CHROMA_PERSIST_DIR:-/app/data/chroma}"
 
-mkdir -p /app/data/chroma /app/data/raw
+mkdir -p "${CHROMA_PERSIST_DIR}" /app/data/raw
 
 if [ ! -f /app/raas-frontend/server.js ]; then
   echo "Missing Next standalone server at /app/raas-frontend/server.js" >&2
