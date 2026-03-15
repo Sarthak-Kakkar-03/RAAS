@@ -1,5 +1,5 @@
 app = "raas"
-primary_region = "iad"
+primary_region = "ewr"
 
 [build]
   dockerfile = "Dockerfile"
