@@ -1,39 +1,70 @@
 # Retrieval-as-a-Service (RaaS)
 
-RaaS is a self-hosted retrieval service for RAG workflows that you can clone and turn into your own retrieval pipeline.
+<p align="center">
+  <img src="./assets/raas_gif.gif" alt="RaaS demo" width="900" />
+</p>
 
-It lets you:
-- create projects
-- upload documents
-- ingest and index them into Chroma
-- query relevant chunks through an API
+RaaS is a self-hosted retrieval layer for RAG workflows. It gives you a clean base for project-scoped document retrieval: create a project, upload files, ingest into Chroma, and query the most relevant chunks through a UI or API.
 
-RaaS handles retrieval only. Use it as a base layer for your own document pipeline, internal search flow, or RAG stack.
+## Why This Exists
+
+Most RAG demos stop at "chat with docs" and hide the retrieval layer inside app code. This project pulls retrieval out into its own service so you can:
+
+- manage projects independently
+- issue per-project API keys
+- upload and ingest documents without custom glue code
+- query relevant chunks from your own apps and agents
+- customize the ingestion and retrieval pipeline without rebuilding the whole stack
+
+Use it as the retrieval backbone for internal search, document workflows, or a larger RAG system.
 
 ## What It Includes
 
-- Next.js frontend for project and document management
-- FastAPI backend
-- Chroma vector storage
+- Next.js frontend for admin login, project management, document upload, and querying
+- FastAPI backend for auth, project lifecycle, ingestion, and retrieval endpoints
+- Chroma vector storage for indexed document chunks
 - per-project API keys for document and query access
-- admin password flow for project create/delete
+- admin password flow for protected project create/delete actions
 
-## How To Use It
+## How It Works
 
-1. Open the app.
-2. Sign in with the admin password.
-3. Create a project.
-4. Save the project API key shown at creation time.
-5. Upload documents and run ingest.
-6. Query the project from the UI or API.
+1. Sign in with the admin password.
+2. Create a project and save the generated API key.
+3. Upload documents to the project.
+4. Trigger ingestion to chunk and index the files in Chroma.
+5. Query the project from the UI or call the retrieval API directly.
 
-You can keep this flow as-is, or clone the repo and customize the ingestion, storage, and retrieval steps for your own use case.
+## Quick Start
 
-For local setup, start from [`.env.example`](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/.env.example) and copy it to `.env`.
+Copy the local environment template:
+
+```bash
+cp .env.example .env
+```
+
+Start backend dependencies:
+
+```bash
+docker compose up -d
+```
+
+Run the frontend:
+
+```bash
+cd raas-frontend
+npm install
+npm run dev
+```
+
+Check the backend health endpoint:
+
+```bash
+curl http://localhost:8000/health
+```
 
 ## Retrieval Example
 
-Direct API query:
+Query the backend directly:
 
 ```bash
 curl -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
@@ -42,7 +73,7 @@ curl -X POST http://localhost:8000/projects/<PROJECT_ID>/query \
   -d '{"query":"What does this document say?","top_k":5}'
 ```
 
-If you are going through the frontend app instead of the API directly:
+Or query through the frontend route:
 
 ```bash
 curl -X POST http://localhost:8080/api/projects/<PROJECT_ID>/query \
@@ -51,6 +82,14 @@ curl -X POST http://localhost:8080/api/projects/<PROJECT_ID>/query \
   -d '{"query":"What does this document say?","top_k":5}'
 ```
 
+## Stack
+
+- Next.js
+- FastAPI
+- Chroma
+- Docker / Docker Compose
+- Fly.io for deployment
+
 ## Developer Notes
 
-For local setup, deployment, and API/developer details, see [DEV_README.md](/DEV_README.md).
+For local setup, deployment, and API details, see [DEV_README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/DEV_README.md).

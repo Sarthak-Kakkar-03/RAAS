@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RaaS Frontend
 
-## Getting Started
+This app is the web interface for RaaS. It handles admin authentication, project creation, document uploads, ingestion triggers, and retrieval queries against the backend API.
 
-First, run the development server:
+## Responsibilities
+
+- admin login/logout flow
+- create and delete projects
+- upload project documents
+- trigger ingest runs
+- query indexed content from the browser
+
+## Local Development
+
+Install dependencies and start the app:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The frontend expects the backend and local services to be running from the repo root:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker compose up -d
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Default local app URL:
 
-## Learn More
+```text
+http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The frontend is part of the main RaaS repo and is not intended to be deployed as a standalone product.
+- Project and API behavior are documented in the root [README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/README.md) and [DEV_README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/DEV_README.md).
