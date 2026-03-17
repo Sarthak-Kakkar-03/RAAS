@@ -92,4 +92,4 @@ curl -X POST http://localhost:8080/api/projects/<PROJECT_ID>/query \
 
 ## Developer Notes
 
-For local setup, deployment, and API details, see [DEV_README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/DEV_README.md).
+For local setup, deployment, and API details, see [DEV_README.md](DEV_README.md).

@@ -34,4 +34,4 @@ http://localhost:3000
 ## Notes
 
 - The frontend is part of the main RaaS repo and is not intended to be deployed as a standalone product.
-- Project and API behavior are documented in the root [README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/README.md) and [DEV_README.md](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/DEV_README.md).
+- Project and API behavior are documented in the root [README.md](../README.md) and [DEV_README.md](../DEV_README.md).
