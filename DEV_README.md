@@ -20,7 +20,7 @@ fly.toml
 
 ## Local Run
 
-Create your local env file from [`.env.example`](/Users/sarthakkakkar/Desktop/Projects/RAAS/RAAS/.env.example):
+Create your local env file from [`.env.example`](.env.example):
 
 ```bash
 cp .env.example .env
