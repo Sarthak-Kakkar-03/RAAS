@@ -8,6 +8,17 @@ from typing import Any, Dict, List, Optional
 from api.core.db import get_conn
 
 
+def _ensure_column(conn, column_name: str, definition: str) -> None:
+    existing_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(retrieval_events)").fetchall()
+    }
+    if column_name not in existing_columns:
+        conn.execute(
+            f"ALTER TABLE retrieval_events ADD COLUMN {column_name} {definition}"
+        )
+
+
 @dataclass(frozen=True)
 class RetrievalEvent:
     event_id: str
@@ -19,6 +30,8 @@ class RetrievalEvent:
     where: Optional[Dict[str, Any]]
     top_hit_ids: List[str]
     top_hit_distances: List[float]
+    top_hit_texts: List[str]
+    top_hit_metadatas: List[Optional[Dict[str, Any]]]
     created_at: str
 
 
@@ -45,6 +58,8 @@ def _row_to_retrieval_event(row) -> RetrievalEvent:
         where=json.loads(row["where_json"]) if row["where_json"] else None,
         top_hit_ids=json.loads(row["top_hit_ids_json"] or "[]"),
         top_hit_distances=json.loads(row["top_hit_distances_json"] or "[]"),
+        top_hit_texts=json.loads(row["top_hit_texts_json"] or "[]"),
+        top_hit_metadatas=json.loads(row["top_hit_metadatas_json"] or "[]"),
         created_at=row["created_at"],
     )
 
@@ -70,6 +85,12 @@ def init_retrieval_registry() -> None:
             CREATE INDEX IF NOT EXISTS idx_retrieval_events_project_created
             ON retrieval_events(project_id, created_at DESC)
             """)
+        _ensure_column(conn, "top_hit_texts_json", "TEXT NOT NULL DEFAULT '[]'")
+        _ensure_column(
+            conn,
+            "top_hit_metadatas_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
 
 
 def create_retrieval_event(
@@ -83,6 +104,8 @@ def create_retrieval_event(
     where: Optional[Dict[str, Any]],
     top_hit_ids: List[str],
     top_hit_distances: List[float],
+    top_hit_texts: List[str],
+    top_hit_metadatas: List[Optional[Dict[str, Any]]],
 ) -> RetrievalEvent:
     """Persist one retrieval event and return the normalized record."""
     init_retrieval_registry()
@@ -100,9 +123,11 @@ def create_retrieval_event(
                 where_json,
                 top_hit_ids_json,
                 top_hit_distances_json,
+                top_hit_texts_json,
+                top_hit_metadatas_json,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event_id,
@@ -114,6 +139,8 @@ def create_retrieval_event(
                 json.dumps(where) if where is not None else None,
                 json.dumps(top_hit_ids),
                 json.dumps(top_hit_distances),
+                json.dumps(top_hit_texts),
+                json.dumps(top_hit_metadatas),
                 created_at,
             ),
         )
@@ -127,6 +154,8 @@ def create_retrieval_event(
         where=where,
         top_hit_ids=top_hit_ids,
         top_hit_distances=top_hit_distances,
+        top_hit_texts=top_hit_texts,
+        top_hit_metadatas=top_hit_metadatas,
         created_at=created_at,
     )
 

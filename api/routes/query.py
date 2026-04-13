@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import time
 import uuid
@@ -24,25 +22,6 @@ from api.services.retrieval_service import retrieve
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["query"])
 logger = logging.getLogger(__name__)
-
-
-def _trace_query_value(query: str) -> str:
-    """Return a non-reversible query marker for retrieval trace storage."""
-    digest = hashlib.sha256(query.encode("utf-8")).hexdigest()[:16]
-    return f"sha256:{digest} len:{len(query)}"
-
-
-def _trace_where_value(where: dict | None) -> dict | None:
-    """Return a redacted metadata filter marker for retrieval trace storage."""
-    if where is None:
-        return None
-    encoded = json.dumps(where, sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
-    return {
-        "redacted": True,
-        "sha256": digest,
-        "top_level_keys": sorted(str(key) for key in where.keys()),
-    }
 
 
 @router.post("/query", response_model=QueryOut)
@@ -79,18 +58,25 @@ def query_project(
         traced_hits = [hit for hit in hits[:5] if hit.get("distance") is not None]
         trace_id = None
         try:
-            # Privacy gate: raw query/filter payloads stay out of trace storage unless
-            # we add an explicit opt-in plus TTL-bounded retention for full payloads.
             trace = create_retrieval_event(
                 event_id=uuid.uuid4().hex[:12],
                 project_id=project_id,
-                query=_trace_query_value(body.query),
+                query=body.query,
                 top_k=body.top_k,
                 hit_count=len(hits),
                 latency_ms=latency_ms,
-                where=_trace_where_value(body.where),
+                where=body.where,
                 top_hit_ids=[str(hit["id"]) for hit in traced_hits],
                 top_hit_distances=[float(hit["distance"]) for hit in traced_hits],
+                top_hit_texts=[str(hit.get("text") or "") for hit in traced_hits],
+                top_hit_metadatas=[
+                    (
+                        hit.get("metadata")
+                        if isinstance(hit.get("metadata"), dict)
+                        else None
+                    )
+                    for hit in traced_hits
+                ],
             )
             trace_id = trace.event_id
         except Exception as exc:

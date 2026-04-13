@@ -48,6 +48,8 @@ class RetrievalTraceOut(BaseModel):
     where: Optional[Dict[str, Any]]
     top_hit_ids: List[str]
     top_hit_distances: List[float]
+    top_hit_texts: List[str]
+    top_hit_metadatas: List[Optional[Dict[str, Any]]]
     created_at: str
 
 

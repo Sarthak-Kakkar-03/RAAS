@@ -1,9 +1,13 @@
 "use client";
+
 import type {
   DocumentInfo,
   IngestBatchStatus,
   ProjectPublicInfo,
   QueryResponse,
+  RetrievalSummaryResponse,
+  RetrievalTraceInfo,
+  RetrievalTraceListResponse,
   UploadDocumentStatus,
 } from "@/types/api";
 import { API_BASE_URL } from "@/app/utils/apiBaseUrl";
@@ -16,8 +20,11 @@ type ProjectDashboardPageProps = {
   }>;
 };
 
+type DashboardView = "documents" | "traces";
+
 export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   const { projectId } = use(params);
+  const [activeView, setActiveView] = useState<DashboardView>("documents");
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationProject, setValidationProject] =
     useState<ProjectPublicInfo | null>(null);
@@ -25,6 +32,11 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     useState(true);
   const [validationProjectError, setValidationProjectError] = useState("");
   const [documentList, setDocumentList] = useState<DocumentInfo[]>([]);
+  const [traceList, setTraceList] = useState<RetrievalTraceInfo[]>([]);
+  const [traceSummary, setTraceSummary] =
+    useState<RetrievalSummaryResponse | null>(null);
+  const [isLoadingTraceView, setIsLoadingTraceView] = useState(false);
+  const [traceViewError, setTraceViewError] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadModalError, setUploadModalError] = useState("");
@@ -132,6 +144,55 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setDocumentList(data.documents);
   }
 
+  async function retrieveTraceInfo(signal?: AbortSignal) {
+    const apiKey = getStoredProjectApiKey();
+
+    if (!apiKey) {
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/queries`, {
+      method: "GET",
+      signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    await handleProtectedResponse(response);
+
+    const data = (await response.json()) as RetrievalTraceListResponse;
+    setTraceList(data.traces);
+  }
+
+  async function retrieveTraceSummary(signal?: AbortSignal) {
+    const apiKey = getStoredProjectApiKey();
+
+    if (!apiKey) {
+      return;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/projects/${projectId}/queries/summary`,
+      {
+        method: "GET",
+        signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      },
+    );
+
+    await handleProtectedResponse(response);
+
+    const data = (await response.json()) as RetrievalSummaryResponse;
+    setTraceSummary(data);
+  }
+
+  async function retrieveTraceViewData(signal?: AbortSignal) {
+    await Promise.all([retrieveTraceInfo(signal), retrieveTraceSummary(signal)]);
+  }
+
   const loadValidationProject = useEffectEvent(async (signal: AbortSignal) => {
     setIsLoadingValidationProject(true);
     setValidationProjectError("");
@@ -167,13 +228,32 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     }
   });
 
-  const loadDocuments = useEffectEvent(async (signal: AbortSignal) => {
+  const loadProjectData = useEffectEvent(async (signal: AbortSignal) => {
     try {
-      await retrieveDocumentInfo(signal);
+      await Promise.all([retrieveDocumentInfo(signal), retrieveTraceViewData(signal)]);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
+    }
+  });
+
+  const loadTraceView = useEffectEvent(async (signal?: AbortSignal) => {
+    setIsLoadingTraceView(true);
+    setTraceViewError("");
+
+    try {
+      await retrieveTraceViewData(signal);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      setTraceViewError(
+        error instanceof Error ? error.message : "Could not load trace view.",
+      );
+    } finally {
+      setIsLoadingTraceView(false);
     }
   });
 
@@ -193,12 +273,30 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     }
 
     const controller = new AbortController();
-    void loadDocuments(controller.signal);
+    void loadProjectData(controller.signal);
 
     return () => {
       controller.abort();
     };
   }, [projectId]);
+
+  useEffect(() => {
+    if (activeView !== "traces") {
+      return;
+    }
+
+    if (!sessionStorage.getItem(`project_api_key:${projectId}`)) {
+      openValidationModal();
+      return;
+    }
+
+    const controller = new AbortController();
+    void loadTraceView(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeView, projectId]);
 
   function openUploadModal() {
     setSelectedFile(null);
@@ -440,6 +538,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
       const data = (await response.json()) as QueryResponse;
       setRetrieveResult(data);
+      await retrieveTraceViewData();
     } catch (error) {
       setRetrieveModalError(
         error instanceof Error ? error.message : "Could not retrieve response.",
@@ -451,7 +550,32 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
   function handleProjectValidated() {
     closeValidationModal();
-    void retrieveDocumentInfo();
+    void Promise.all([retrieveDocumentInfo(), retrieveTraceViewData()]);
+  }
+
+  function formatTimestamp(value: string | null) {
+    if (!value) {
+      return "Never";
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return parsed.toLocaleString();
+  }
+
+  function formatDistance(value: number) {
+    return Number.isFinite(value) ? value.toFixed(4) : "n/a";
+  }
+
+  function formatMetadata(value: Record<string, unknown> | null | undefined) {
+    if (!value) {
+      return "No metadata";
+    }
+
+    return JSON.stringify(value, null, 2);
   }
 
   function renderUploadModal() {
@@ -694,7 +818,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             <p className="mt-2 text-sm">
               Use this route for direct retrieval testing in other dev work:
             </p>
-            <div className="mt-3 rounded-box bg-base-100 px-3 py-2 font-mono text-xs break-all">
+            <div className="mt-3 break-all rounded-box bg-base-100 px-3 py-2 font-mono text-xs">
               <span className="font-semibold text-warning">POST</span>{" "}
               {directRetrieveEndpoint}
             </div>
@@ -777,128 +901,367 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     );
   }
 
-  return (
-    <main className="min-h-screen flex flex-col justify-between items-stretch bg-base-200 px-8 py-12">
-      <div>
-        <div className="">
-          <div className="px-4">
-            <h1 className="font-bold text-5xl text-primary">
-              Project Dashboard
-            </h1>
+  function renderDocumentView() {
+    return (
+      <div className="rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <div className="flex items-center justify-between border-b border-base-300 px-6 py-5">
+          <div>
+            <h2 className="text-2xl font-bold text-base-content">
+              Document List
+            </h2>
+            <p className="mt-1 text-sm text-base-content/65">
+              {documentList.length > 0
+                ? `Displaying ${documentList.length} document${documentList.length === 1 ? "" : "s"}`
+                : "No documents have been uploaded yet."}
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-5">
-          <div>
-            <h2 className="font-bold text-3xl text-white">Document List</h2>
-          </div>
-          <div className="max-h-105 overflow-x-auto overflow-y-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>
-                    {documentList.length > 0
-                      ? `Displaying ${documentList.length} documents`
-                      : "Found 0 documents"}
-                  </th>
-                </tr>
-                <tr>
-                  <th></th>
-                  <th>Name</th>
-                  <th>Document ID</th>
-                  <th>Status</th>
-                  <th>Ingested</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {documentList.map((info, index) => (
+        <div className="overflow-x-auto">
+          <table className="table table-zebra">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Document ID</th>
+                <th>Status</th>
+                <th>Ingested</th>
+                <th>Chunks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documentList.length > 0 ? (
+                documentList.map((info, index) => (
                   <tr key={info.doc_id}>
-                    <th>
-                      <span className="text-xl">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
+                    <th className="text-base-content/50">
+                      {String(index + 1).padStart(2, "0")}
                     </th>
+                    <td className="font-semibold text-primary">
+                      {info.filename}
+                    </td>
+                    <td className="font-mono text-xs text-accent">
+                      {info.doc_id}
+                    </td>
                     <td>
-                      <span className="font-bold text-lg text-primary">
-                        {`${info.filename}`}
+                      <span className="badge badge-warning badge-outline">
+                        {info.status}
                       </span>
-                    </td>
-                    <td>
-                      <span className="text-accent">{`${info.doc_id}`}</span>
-                    </td>
-                    <td>
-                      <span className="text-warning">{`${info.status}`}</span>
                     </td>
                     <td>
                       <span
-                        className={
-                          info.ingested ? "text-success" : "text-error"
-                        }
+                        className={`badge ${info.ingested ? "badge-success" : "badge-error"} badge-soft`}
                       >
-                        {info.ingested ? "True" : "False"}
+                        {info.ingested ? "Ingested" : "Pending"}
                       </span>
                     </td>
+                    <td>{info.num_chunks}</td>
                   </tr>
-                ))}
-              </tbody>
-
-              <tfoot>
+                ))
+              ) : (
                 <tr>
-                  <th></th>
-                  <th>Name</th>
-                  <th>Document ID</th>
-                  <th>Status</th>
-                  <th>Ingested</th>
+                  <td colSpan={6} className="py-10 text-center text-base-content/60">
+                    Upload a document to populate this table.
+                  </td>
                 </tr>
-              </tfoot>
-            </table>
-          </div>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+    );
+  }
 
-      <div className="flex flex-row justify-evenly p-3">
-        <button
-          className={`btn btn-xl btn-ghost btn-primary p-3 ${canIngestDocuments ? "" : "btn-disabled"}`}
-          onClick={openIngestModal}
-          disabled={!canIngestDocuments}
-        >
-          <span>Ingest</span>
-        </button>
-        <button
-          className="btn btn-xl btn-ghost btn-success p-3"
-          onClick={openUploadModal}
-        >
-          <span>Upload</span>
-        </button>
-        <button
-          className="btn btn-xl btn-ghost btn-accent p-3"
-          onClick={async () => {
-            try {
-              await retrieveDocumentInfo();
-            } catch (error) {
-              console.error(
-                "Failed to refresh document list via retrieveDocumentInfo.",
-                error,
-              );
-            }
-          }}
-        >
-          <span>Refresh List</span>
-        </button>
-        <button
-          className={`btn btn-xl btn-ghost btn-error p-3 ${documentList.length > 0 ? "" : "btn-disabled"}`}
-          onClick={openDeleteModal}
-        >
-          <span>Delete</span>
-        </button>
-        <button
-          className={`btn btn-xl btn-ghost btn-warning p-3 ${canRetrieveDocuments ? "" : "btn-disabled"}`}
-          onClick={openRetrieveModal}
-          disabled={!canRetrieveDocuments}
-        >
-          <span>Retrieve</span>
-        </button>
+  function renderTraceView() {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <div className="stat-title">Total Queries</div>
+            <div className="stat-value text-primary">
+              {traceSummary?.total_queries ?? 0}
+            </div>
+            <div className="stat-desc">
+              Last queried: {formatTimestamp(traceSummary?.last_queried_at ?? null)}
+            </div>
+          </div>
+          <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <div className="stat-title">Avg Latency</div>
+            <div className="stat-value text-secondary">
+              {traceSummary ? `${traceSummary.avg_latency_ms}ms` : "0ms"}
+            </div>
+            <div className="stat-desc">
+              Avg hits per query: {traceSummary?.avg_hit_count ?? 0}
+            </div>
+          </div>
+          <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <div className="stat-title">Zero Hit Queries</div>
+            <div className="stat-value text-warning">
+              {traceSummary?.zero_hit_queries ?? 0}
+            </div>
+            <div className="stat-desc">
+              Filtered queries: {traceSummary?.filtered_queries ?? 0}
+            </div>
+          </div>
+          <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
+            <div className="stat-title">Recent Traces</div>
+            <div className="stat-value text-accent">{traceList.length}</div>
+            <div className="stat-desc">Latest retrieval events from the API.</div>
+          </div>
+        </div>
+
+        <div className="rounded-box border border-base-300 bg-base-100 shadow-sm">
+          <div className="flex items-center justify-between border-b border-base-300 px-6 py-5">
+            <div>
+              <h2 className="text-2xl font-bold text-base-content">Trace View</h2>
+              <p className="mt-1 text-sm text-base-content/65">
+                Recent retrieval traces captured by the backend query routes.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => {
+                void loadTraceView();
+              }}
+              disabled={isLoadingTraceView}
+            >
+              {isLoadingTraceView ? "Refreshing" : "Refresh Traces"}
+            </button>
+          </div>
+
+          {traceViewError ? (
+            <div className="px-6 pt-5">
+              <div className="alert alert-error">{traceViewError}</div>
+            </div>
+          ) : null}
+
+          {isLoadingTraceView ? (
+            <div className="flex items-center gap-3 px-6 py-10 text-sm text-base-content/70">
+              <span className="loading loading-spinner loading-md"></span>
+              <span>Loading retrieval traces.</span>
+            </div>
+          ) : traceList.length > 0 ? (
+            <div className="space-y-4 p-6">
+              {traceList.map((trace) => (
+                <div
+                  key={trace.event_id}
+                  className="collapse collapse-arrow rounded-box border border-base-300 bg-base-200"
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`Toggle trace ${trace.event_id}`}
+                  />
+                  <div className="collapse-title pr-14">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="badge badge-primary badge-outline">
+                            {trace.event_id}
+                          </span>
+                          <span className="badge badge-neutral badge-outline">
+                            top_k {trace.top_k}
+                          </span>
+                          <span className="badge badge-success badge-outline">
+                            {trace.hit_count} hit{trace.hit_count === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <p className="mt-3 line-clamp-2 font-mono text-sm text-base-content">
+                          {trace.query}
+                        </p>
+                      </div>
+                      <div className="text-sm text-base-content/65">
+                        {formatTimestamp(trace.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="collapse-content px-5 pb-5">
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <div className="rounded-box bg-base-100 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                          Latency
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-secondary">
+                          {trace.latency_ms} ms
+                        </p>
+                      </div>
+                      <div className="rounded-box bg-base-100 p-4 lg:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                          Query
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-base-content/85">
+                          {trace.query}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-box bg-base-100 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                        Filters
+                      </p>
+                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-base-content/75">
+                        {trace.where ? JSON.stringify(trace.where, null, 2) : "No filters"}
+                      </pre>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {trace.top_hit_ids.length > 0 ? (
+                        trace.top_hit_ids.map((hitId, index) => (
+                          <div
+                            key={`${trace.event_id}-${hitId}-${index}`}
+                            className="rounded-box border border-base-300 bg-base-100 p-4"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="badge badge-outline">
+                                Rank {index + 1}
+                              </span>
+                              <span className="badge badge-accent badge-outline">
+                                {formatDistance(
+                                  trace.top_hit_distances[index] ?? NaN,
+                                )}
+                              </span>
+                            </div>
+                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                              Chunk ID
+                            </p>
+                            <p className="mt-1 break-all font-mono text-xs">
+                              {hitId}
+                            </p>
+                            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                              Chunk Text
+                            </p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm text-base-content/85">
+                              {trace.top_hit_texts[index] || "No chunk text stored."}
+                            </p>
+                            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                              Metadata
+                            </p>
+                            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-base-content/75">
+                              {formatMetadata(trace.top_hit_metadatas[index])}
+                            </pre>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-box border border-base-300 bg-base-100 p-4 text-base-content/60">
+                          No top hits were stored for this trace.
+                        </div>
+                      )}
+                    </div>
+
+                    {trace.top_hit_ids.length > 0 ? (
+                      <div className="mt-4 overflow-x-auto">
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>Top Hit ID</th>
+                              <th>Distance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {trace.top_hit_ids.map((hitId, index) => (
+                              <tr key={`${trace.event_id}-summary-${hitId}-${index}`}>
+                                <td className="font-mono text-xs">{hitId}</td>
+                                <td>
+                                  {formatDistance(
+                                    trace.top_hit_distances[index] ?? NaN,
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-6 py-10 text-center text-base-content/60">
+              No retrieval traces yet. Run a query to populate this view.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-base-200 px-6 py-10 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
+        <div className="flex flex-col gap-4 rounded-box border border-base-300 bg-base-100 px-6 py-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary/70">
+              Project Dashboard
+            </p>
+            <h1 className="mt-2 text-4xl font-bold text-primary">
+              {validationProject?.name ?? "Project Workspace"}
+            </h1>
+            <p className="mt-2 text-sm text-base-content/65">
+              Project ID: <span className="font-mono">{projectId}</span>
+            </p>
+          </div>
+          <div className="tabs tabs-box bg-base-200 p-1">
+            <button
+              type="button"
+              className={`tab px-6 ${activeView === "documents" ? "tab-active" : ""}`}
+              onClick={() => setActiveView("documents")}
+            >
+              Document View
+            </button>
+            <button
+              type="button"
+              className={`tab px-6 ${activeView === "traces" ? "tab-active" : ""}`}
+              onClick={() => setActiveView("traces")}
+            >
+              Trace View
+            </button>
+          </div>
+        </div>
+
+        {activeView === "documents" ? renderDocumentView() : renderTraceView()}
+
+        <div className="flex flex-wrap justify-center gap-3 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+          <button
+            className={`btn btn-primary ${canIngestDocuments ? "" : "btn-disabled"}`}
+            onClick={openIngestModal}
+            disabled={!canIngestDocuments}
+          >
+            Ingest
+          </button>
+          <button className="btn btn-success" onClick={openUploadModal}>
+            Upload
+          </button>
+          <button
+            className="btn btn-accent"
+            onClick={async () => {
+              try {
+                if (activeView === "traces") {
+                  await retrieveTraceViewData();
+                } else {
+                  await retrieveDocumentInfo();
+                }
+              } catch (error) {
+                console.error("Failed to refresh project dashboard.", error);
+              }
+            }}
+          >
+            {activeView === "traces" ? "Refresh Traces" : "Refresh List"}
+          </button>
+          <button
+            className={`btn btn-error ${documentList.length > 0 ? "" : "btn-disabled"}`}
+            onClick={openDeleteModal}
+            disabled={documentList.length === 0}
+          >
+            Delete
+          </button>
+          <button
+            className={`btn btn-warning ${canRetrieveDocuments ? "" : "btn-disabled"}`}
+            onClick={openRetrieveModal}
+            disabled={!canRetrieveDocuments}
+          >
+            Retrieve
+          </button>
+        </div>
       </div>
       {renderUploadModal()}
       {renderDeleteModal()}
