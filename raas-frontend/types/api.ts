@@ -64,3 +64,36 @@ export type QueryResponse = {
   latency_ms: number;
   retrieval_debug: Record<string, unknown>;
 };
+
+export type RetrievalTraceInfo = {
+  event_id: string;
+  project_id: string;
+  query: string;
+  top_k: number;
+  hit_count: number;
+  latency_ms: number;
+  where: Record<string, unknown> | null;
+  top_hit_ids: string[];
+  top_hit_distances: number[];
+  top_hit_texts: string[];
+  top_hit_metadatas: (Record<string, unknown> | null)[];
+  created_at: string;
+};
+
+export type RetrievalTraceListResponse = {
+  ok: boolean;
+  project_id: string;
+  count: number;
+  traces: RetrievalTraceInfo[];
+};
+
+export type RetrievalSummaryResponse = {
+  ok: boolean;
+  project_id: string;
+  total_queries: number;
+  avg_latency_ms: number;
+  zero_hit_queries: number;
+  filtered_queries: number;
+  avg_hit_count: number;
+  last_queried_at: string | null;
+};
