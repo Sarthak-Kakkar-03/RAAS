@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import asdict
@@ -20,6 +21,7 @@ from api.services.retrieval_registry import (
 from api.services.retrieval_service import retrieve
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["query"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/query", response_model=QueryOut)
@@ -54,17 +56,32 @@ def query_project(
         )
         latency_ms = int((time.time() - t0) * 1000)
         traced_hits = [hit for hit in hits[:5] if hit.get("distance") is not None]
-        trace = create_retrieval_event(
-            event_id=uuid.uuid4().hex[:12],
-            project_id=project_id,
-            query=body.query,
-            top_k=body.top_k,
-            hit_count=len(hits),
-            latency_ms=latency_ms,
-            where=body.where,
-            top_hit_ids=[str(hit["id"]) for hit in traced_hits],
-            top_hit_distances=[float(hit["distance"]) for hit in traced_hits],
-        )
+        trace_id = None
+        try:
+            trace = create_retrieval_event(
+                event_id=uuid.uuid4().hex[:12],
+                project_id=project_id,
+                query=body.query,
+                top_k=body.top_k,
+                hit_count=len(hits),
+                latency_ms=latency_ms,
+                where=body.where,
+                top_hit_ids=[str(hit["id"]) for hit in traced_hits],
+                top_hit_distances=[float(hit["distance"]) for hit in traced_hits],
+            )
+            trace_id = trace.event_id
+        except Exception as exc:
+            logger.exception(
+                "Failed to persist retrieval trace: %s",
+                exc,
+                extra={
+                    "project_id": project_id,
+                    "top_k": body.top_k,
+                    "hit_count": len(hits),
+                    "latency_ms": latency_ms,
+                    "filters_applied": body.where is not None,
+                },
+            )
         return QueryOut(
             results=hits,
             latency_ms=latency_ms,
@@ -72,7 +89,7 @@ def query_project(
                 "project_id": project_id,
                 "top_k": body.top_k,
                 "hit_count": len(hits),
-                "trace_id": trace.event_id,
+                "trace_id": trace_id,
                 "filters_applied": body.where is not None,
             },
         )
