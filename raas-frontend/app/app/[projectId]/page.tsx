@@ -1098,7 +1098,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                       <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
                         Filters
                       </p>
-                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-base-content/75">
+                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs text-base-content/75">
                         {trace.where ? JSON.stringify(trace.where, null, 2) : "No filters"}
                       </pre>
                     </div>
@@ -1135,7 +1135,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/55">
                               Metadata
                             </p>
-                            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-base-content/75">
+                            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs text-base-content/75">
                               {formatMetadata(trace.top_hit_metadatas[index])}
                             </pre>
                           </div>

@@ -69,7 +69,9 @@ docker run --rm \
 
 ## Fly Deploy
 
-Basic deploy flow for app `raas-sk`:
+This repo deploys one container image defined by [`Dockerfile`](Dockerfile) and configured by [`fly.toml`](fly.toml). The Fly app name in this repo is `raas-sk`.
+
+First-time setup for app `raas-sk`:
 
 ```bash
 fly launch --name raas-sk --no-deploy
@@ -86,6 +88,30 @@ fly secrets set \
 fly deploy
 ```
 
+Normal update flow after you have already created the app:
+
+```bash
+fly status -a raas-sk
+fly deploy -a raas-sk
+```
+
+That is the command you run when you want Fly.io to rebuild the Docker image with your latest code and roll out the updated container.
+
+Useful release checks:
+
+```bash
+fly logs -a raas-sk
+fly releases -a raas-sk
+fly machine list -a raas-sk
+```
+
+If you change secrets or env-driven behavior:
+
+```bash
+fly secrets set KEY=value -a raas-sk
+fly deploy -a raas-sk
+```
+
 After deploy:
 
 ```text
@@ -93,7 +119,7 @@ https://raas-sk.fly.dev
 https://raas-sk.fly.dev/api/health
 ```
 
-If `fly.toml` still uses a different app name, change it before deploying.
+This app stores SQLite registry data and local Chroma persistence under `/app/data`, backed by the Fly volume mount `raas_data`.
 
 ## API Notes
 
@@ -185,13 +211,16 @@ Expected response shape:
         "filename": "refund-policy.pdf",
         "chunk_index": 0
       },
-      "score": 0.91
+      "distance": 0.91
     }
   ],
   "latency_ms": 42,
   "retrieval_debug": {
     "project_id": "demo",
-    "top_k": 5
+    "top_k": 5,
+    "hit_count": 1,
+    "trace_id": "abc123def456",
+    "filters_applied": false
   },
   "ok": true
 }
@@ -200,8 +229,24 @@ Expected response shape:
 Response fields:
 - `results`: list of retrieval hits returned by the retrieval service.
 - `latency_ms`: total retrieval time in milliseconds.
-- `retrieval_debug`: debug metadata currently including `project_id` and `top_k`.
+- `retrieval_debug`: debug metadata including `project_id`, `top_k`, `hit_count`, `trace_id`, and whether filters were applied.
 - `ok`: boolean success flag.
+
+Trace endpoints:
+
+```text
+GET /projects/{project_id}/queries
+GET /projects/{project_id}/queries/summary
+```
+
+These endpoints return stored retrieval traces and aggregate metrics for the project. New traces now include:
+
+- raw query text
+- filter payload
+- top hit IDs
+- top hit distances
+- top hit chunk text
+- top hit metadata
 
 Error behavior:
 - `401` if the bearer token is missing.

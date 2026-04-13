@@ -62,6 +62,30 @@ Check the backend health endpoint:
 curl http://localhost:8000/health
 ```
 
+## Local Docker With `.env`
+
+To run the full app locally from the production `Dockerfile` and load values from your repo `.env`:
+
+```bash
+docker build -t raas-local .
+docker run --rm \
+  --env-file .env \
+  -p 8080:8080 \
+  -p 8000:8000 \
+  raas-local
+```
+
+Open:
+
+- `http://localhost:8080`
+- `http://localhost:8000/health`
+
+If you change code, rebuild the image before running again:
+
+```bash
+docker build -t raas-local .
+```
+
 ## Retrieval Example
 
 Query the backend directly:
@@ -89,6 +113,40 @@ curl -X POST http://localhost:8080/api/projects/<PROJECT_ID>/query \
 - Chroma
 - Docker / Docker Compose
 - Fly.io for deployment
+
+## Fly.io Deploy
+
+This repo deploys a single Docker image to Fly using [`fly.toml`](fly.toml). The current Fly app is `raas-sk`.
+
+Typical update flow:
+
+```bash
+fly auth login
+fly status -a raas-sk
+fly deploy -a raas-sk
+```
+
+That rebuilds the image from the current repo, pushes it to Fly, and rolls the machine to the new container.
+
+Useful follow-up commands:
+
+```bash
+fly logs -a raas-sk
+fly status -a raas-sk
+fly releases -a raas-sk
+```
+
+If you need to update config or secrets first:
+
+```bash
+fly secrets set KEY=value -a raas-sk
+fly deploy -a raas-sk
+```
+
+The deployed app serves:
+
+- frontend: `https://raas-sk.fly.dev`
+- API: `https://raas-sk.fly.dev/api`
 
 ## Developer Notes
 
