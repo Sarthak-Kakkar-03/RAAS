@@ -1,5 +1,6 @@
+from typing import Any, Dict, List, Optional
+
 from pydantic import AliasChoices, BaseModel, Field
-from typing import Optional, List, Dict, Any
 
 
 class ProjectCreate(BaseModel):
@@ -35,6 +36,37 @@ class QueryOut(BaseModel):
     latency_ms: int
     retrieval_debug: Dict[str, Any]
     ok: bool = True
+
+
+class RetrievalTraceOut(BaseModel):
+    event_id: str
+    project_id: str
+    query: str
+    top_k: int
+    hit_count: int
+    latency_ms: int
+    where: Optional[Dict[str, Any]]
+    top_hit_ids: List[str]
+    top_hit_distances: List[float]
+    created_at: str
+
+
+class RetrievalTraceListOut(BaseModel):
+    ok: bool = True
+    project_id: str
+    count: int
+    traces: List[RetrievalTraceOut]
+
+
+class RetrievalSummaryOut(BaseModel):
+    ok: bool = True
+    project_id: str
+    total_queries: int
+    avg_latency_ms: float
+    zero_hit_queries: int
+    filtered_queries: int
+    avg_hit_count: float
+    last_queried_at: Optional[str]
 
 
 class DocumentOut(BaseModel):
