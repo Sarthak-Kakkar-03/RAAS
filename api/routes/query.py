@@ -53,6 +53,7 @@ def query_project(
             where=body.where,
         )
         latency_ms = int((time.time() - t0) * 1000)
+        traced_hits = [hit for hit in hits[:5] if hit.get("distance") is not None]
         trace = create_retrieval_event(
             event_id=uuid.uuid4().hex[:12],
             project_id=project_id,
@@ -61,12 +62,8 @@ def query_project(
             hit_count=len(hits),
             latency_ms=latency_ms,
             where=body.where,
-            top_hit_ids=[str(hit["id"]) for hit in hits[:5]],
-            top_hit_distances=[
-                float(hit["distance"])
-                for hit in hits[:5]
-                if hit.get("distance") is not None
-            ],
+            top_hit_ids=[str(hit["id"]) for hit in traced_hits],
+            top_hit_distances=[float(hit["distance"]) for hit in traced_hits],
         )
         return QueryOut(
             results=hits,
