@@ -50,12 +50,14 @@ def check_relevance_distance(
     dists = (res.get("distances") or [[]])[0]
 
     hits: List[Dict[str, Any]] = []
-    for i in range(min(len(ids), len(docs), len(metas), len(dists))):
+    for i in range(min(len(ids), len(dists))):
+        text = str(docs[i]) if i < len(docs) and docs[i] is not None else ""
+        metadata = metas[i] if i < len(metas) and isinstance(metas[i], dict) else None
         hits.append(
             {
                 "id": str(ids[i]),
-                "text": str(docs[i]),
-                "metadata": metas[i] if isinstance(metas[i], dict) else None,
+                "text": text,
+                "metadata": metadata,
                 "distance": float(dists[i]),
             }
         )

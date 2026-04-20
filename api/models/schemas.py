@@ -41,7 +41,7 @@ class QueryOut(BaseModel):
 class RelevanceCheckIn(BaseModel):
     text: str = Field(..., min_length=1)
     top_k: int = Field(3, ge=1, le=20)
-    distance_threshold: Optional[float] = None
+    distance_threshold: Optional[float] = Field(default=None, ge=0)
     where: Optional[Dict[str, Any]] = Field(
         default=None,
         validation_alias=AliasChoices("where", "filters"),

@@ -49,7 +49,7 @@ def query_project(
         with trace metadata for the request.
 
     Raises:
-        HTTPException: With status 400 if the request parameters are invalid (ValueError), with status 500 for unexpected failures, or re-raises existing HTTPException instances.
+        HTTPException: With status 500 for unexpected failures, or re-raises existing HTTPException instances.
     """
     try:
         require_project_key(project_id, token)
@@ -110,9 +110,15 @@ def query_project(
         )
     except HTTPException:
         raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
+        logger.exception(
+            "Query failed",
+            extra={
+                "project_id": project_id,
+                "top_k": body.top_k,
+                "filters_applied": body.where is not None,
+            },
+        )
         raise HTTPException(status_code=500, detail="Query failed") from e
 
 
@@ -154,9 +160,16 @@ def relevance_check(
         )
     except HTTPException:
         raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
+        logger.exception(
+            "Relevance check failed",
+            extra={
+                "project_id": project_id,
+                "top_k": body.top_k,
+                "filters_applied": body.where is not None,
+                "threshold_provided": body.distance_threshold is not None,
+            },
+        )
         raise HTTPException(status_code=500, detail="Relevance check failed") from e
 
 
