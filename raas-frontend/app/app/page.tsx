@@ -41,7 +41,9 @@ export default function AppPage() {
   const [pendingAdminAction, setPendingAdminAction] = useState<
     "create" | "delete" | null
   >(null);
-  const [pendingAdminForm, setPendingAdminForm] = useState<PendingAdminForm>({});
+  const [pendingAdminForm, setPendingAdminForm] = useState<PendingAdminForm>(
+    {},
+  );
 
   useEffect(() => {
     let isMounted = true;

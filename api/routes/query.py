@@ -10,8 +10,14 @@ from api.core.auth import get_bearer_token, require_project_key
 from api.models.schemas import (
     QueryIn,
     QueryOut,
+    RelevanceCheckIn,
+    RelevanceCheckOut,
     RetrievalSummaryOut,
     RetrievalTraceListOut,
+)
+from api.services.relevance_service import (
+    check_relevance_distance,
+    relevance_metadata,
 )
 from api.services.retrieval_registry import (
     create_retrieval_event,
@@ -43,7 +49,7 @@ def query_project(
         with trace metadata for the request.
 
     Raises:
-        HTTPException: With status 400 if the request parameters are invalid (ValueError), with status 500 for unexpected failures, or re-raises existing HTTPException instances.
+        HTTPException: With status 500 for unexpected failures, or re-raises existing HTTPException instances.
     """
     try:
         require_project_key(project_id, token)
@@ -104,10 +110,67 @@ def query_project(
         )
     except HTTPException:
         raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
+        logger.exception(
+            "Query failed",
+            extra={
+                "project_id": project_id,
+                "top_k": body.top_k,
+                "filters_applied": body.where is not None,
+            },
+        )
         raise HTTPException(status_code=500, detail="Query failed") from e
+
+
+@router.post("/relevance-check", response_model=RelevanceCheckOut)
+def relevance_check(
+    project_id: str,
+    body: RelevanceCheckIn,
+    token: str = Depends(get_bearer_token),
+):
+    """Embed a transient text payload and return nearest content distances."""
+    try:
+        require_project_key(project_id, token)
+        t0 = time.time()
+        hits = check_relevance_distance(
+            project_id=project_id,
+            text=body.text,
+            top_k=body.top_k,
+            where=body.where,
+        )
+        latency_ms = int((time.time() - t0) * 1000)
+        metadata = relevance_metadata()
+        min_distance = min((hit["distance"] for hit in hits), default=None)
+        flagged = (
+            body.distance_threshold is not None
+            and min_distance is not None
+            and min_distance > body.distance_threshold
+        )
+        return RelevanceCheckOut(
+            project_id=project_id,
+            embedding_model=metadata["embedding_model"],
+            distance_metric=metadata["distance_metric"],
+            probe_format=metadata["probe_format"],
+            distance_threshold=body.distance_threshold,
+            min_distance=min_distance,
+            flagged=flagged,
+            hit_count=len(hits),
+            latency_ms=latency_ms,
+            results=hits,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Relevance check failed",
+            extra={
+                "project_id": project_id,
+                "top_k": body.top_k,
+                "filters_applied": body.where is not None,
+                "threshold_provided": body.distance_threshold is not None,
+            },
+        )
+        raise HTTPException(status_code=500, detail="Relevance check failed") from e
 
 
 @router.get("/queries", response_model=RetrievalTraceListOut)
