@@ -5,6 +5,7 @@ import type {
   IngestBatchStatus,
   ProjectPublicInfo,
   QueryResponse,
+  RelevanceCheckResponse,
   RetrievalSummaryResponse,
   RetrievalTraceInfo,
   RetrievalTraceListResponse,
@@ -61,6 +62,13 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     null,
   );
   const [isRetrieving, setIsRetrieving] = useState(false);
+  const [relevanceModalOpen, setRelevanceModalOpen] = useState(false);
+  const [relevanceText, setRelevanceText] = useState("");
+  const [relevanceThreshold, setRelevanceThreshold] = useState("");
+  const [relevanceModalError, setRelevanceModalError] = useState("");
+  const [relevanceResult, setRelevanceResult] =
+    useState<RelevanceCheckResponse | null>(null);
+  const [isCheckingRelevance, setIsCheckingRelevance] = useState(false);
   const [directRetrieveEndpoint, setDirectRetrieveEndpoint] = useState("");
   const canIngestDocuments = documentList.some((doc) => !doc.ingested);
   const canRetrieveDocuments = documentList.some((doc) => doc.ingested);
@@ -151,13 +159,16 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       return;
     }
 
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/queries`, {
-      method: "GET",
-      signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
+    const response = await fetch(
+      `${API_BASE_URL}/projects/${projectId}/queries`,
+      {
+        method: "GET",
+        signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
       },
-    });
+    );
 
     await handleProtectedResponse(response);
 
@@ -190,7 +201,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
   }
 
   async function retrieveTraceViewData(signal?: AbortSignal) {
-    await Promise.all([retrieveTraceInfo(signal), retrieveTraceSummary(signal)]);
+    await Promise.all([
+      retrieveTraceInfo(signal),
+      retrieveTraceSummary(signal),
+    ]);
   }
 
   const loadValidationProject = useEffectEvent(async (signal: AbortSignal) => {
@@ -230,7 +244,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
 
   const loadProjectData = useEffectEvent(async (signal: AbortSignal) => {
     try {
-      await Promise.all([retrieveDocumentInfo(signal), retrieveTraceViewData(signal)]);
+      await Promise.all([
+        retrieveDocumentInfo(signal),
+        retrieveTraceViewData(signal),
+      ]);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
@@ -345,6 +362,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setRetrieveModalOpen(true);
   }
 
+  function openRelevanceModal() {
+    if (!canRetrieveDocuments) {
+      return;
+    }
+
+    setRelevanceText("");
+    setRelevanceThreshold("");
+    setRelevanceModalError("");
+    setRelevanceResult(null);
+    setRelevanceModalOpen(true);
+  }
+
   function closeDeleteModal() {
     if (isDeletingDocument) {
       return;
@@ -375,6 +404,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     setRetrieveModalError("");
     setRetrieveResult(null);
     setRetrieveModalOpen(false);
+  }
+
+  function closeRelevanceModal() {
+    if (isCheckingRelevance) {
+      return;
+    }
+
+    setRelevanceText("");
+    setRelevanceThreshold("");
+    setRelevanceModalError("");
+    setRelevanceResult(null);
+    setRelevanceModalOpen(false);
   }
 
   async function handleUploadDocument() {
@@ -545,6 +586,68 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       );
     } finally {
       setIsRetrieving(false);
+    }
+  }
+
+  async function handleRelevanceCheck() {
+    if (!relevanceText.trim()) {
+      setRelevanceModalError("Enter text to check.");
+      return;
+    }
+
+    const apiKey = getStoredProjectApiKey();
+
+    if (!apiKey) {
+      return;
+    }
+
+    const trimmedThreshold = relevanceThreshold.trim();
+    const parsedThreshold =
+      trimmedThreshold === "" ? null : Number(trimmedThreshold);
+
+    if (
+      parsedThreshold !== null &&
+      (!Number.isFinite(parsedThreshold) || parsedThreshold < 0)
+    ) {
+      setRelevanceModalError("Threshold must be a non-negative number.");
+      return;
+    }
+
+    setRelevanceModalError("");
+    setRelevanceResult(null);
+    setIsCheckingRelevance(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/projects/${projectId}/relevance-check`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: relevanceText.trim(),
+            top_k: 5,
+            ...(parsedThreshold !== null
+              ? { distance_threshold: parsedThreshold }
+              : {}),
+          }),
+        },
+      );
+
+      await handleProtectedResponse(response);
+
+      const data = (await response.json()) as RelevanceCheckResponse;
+      setRelevanceResult(data);
+    } catch (error) {
+      setRelevanceModalError(
+        error instanceof Error
+          ? error.message
+          : "Could not check text relevance.",
+      );
+    } finally {
+      setIsCheckingRelevance(false);
     }
   }
 
@@ -901,6 +1004,168 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
     );
   }
 
+  function renderRelevanceModal() {
+    if (!relevanceModalOpen) {
+      return null;
+    }
+
+    return (
+      <div className="modal modal-open gap-3">
+        <div className="modal-box max-h-[85vh] overflow-y-auto">
+          <h1 className="text-lg font-bold">Check Relevance</h1>
+          <p className="mt-2 text-sm opacity-70">
+            Submit any text and compare it to the ingested content in this
+            project. The API returns raw distance and can optionally flag the
+            text when it exceeds a threshold.
+          </p>
+
+          <label className="form-control mt-6 w-full">
+            <span className="label-text font-semibold">Text</span>
+            <textarea
+              className="textarea textarea-bordered mt-2 min-h-32 w-full"
+              value={relevanceText}
+              onChange={(event) => setRelevanceText(event.target.value)}
+              placeholder="Paste the text you want to compare against this project's content"
+            />
+          </label>
+
+          <label className="form-control mt-4 w-full">
+            <span className="label-text font-semibold">Distance threshold</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="input input-bordered mt-2 w-full"
+              value={relevanceThreshold}
+              onChange={(event) => setRelevanceThreshold(event.target.value)}
+              placeholder="Optional, e.g. 0.8"
+            />
+            <span className="label-text-alt mt-2 text-base-content/60">
+              Leave blank to see the distance without flagging.
+            </span>
+          </label>
+
+          {relevanceModalError ? (
+            <p className="mt-3 text-sm font-medium text-error">
+              {relevanceModalError}
+            </p>
+          ) : null}
+
+          {isCheckingRelevance ? (
+            <div className="mt-4 flex items-center gap-3 text-sm opacity-80">
+              <span className="loading loading-infinity loading-md"></span>
+              <span>Checking relevance. Please wait.</span>
+            </div>
+          ) : null}
+
+          {relevanceResult ? (
+            <div className="mt-4 space-y-4">
+              <div className="rounded-box border border-base-300 bg-base-300 p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`badge ${
+                      relevanceResult.flagged ? "badge-error" : "badge-success"
+                    } badge-outline`}
+                  >
+                    {relevanceResult.flagged ? "Flagged" : "Not Flagged"}
+                  </span>
+                  <span className="badge badge-outline">
+                    {relevanceResult.hit_count} hit
+                    {relevanceResult.hit_count === 1 ? "" : "s"}
+                  </span>
+                  <span className="badge badge-outline">
+                    {relevanceResult.latency_ms} ms
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                      Minimum Distance
+                    </p>
+                    <p className="mt-1 font-mono text-sm">
+                      {relevanceResult.min_distance === null
+                        ? "n/a"
+                        : formatDistance(relevanceResult.min_distance)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                      Threshold
+                    </p>
+                    <p className="mt-1 font-mono text-sm">
+                      {relevanceResult.distance_threshold === null
+                        ? "Not provided"
+                        : formatDistance(relevanceResult.distance_threshold)}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-base-content/60">
+                  Model: {relevanceResult.embedding_model} | Metric:{" "}
+                  {relevanceResult.distance_metric}
+                </p>
+              </div>
+
+              <div className="max-h-[36vh] space-y-3 overflow-y-auto">
+                {relevanceResult.results.length > 0 ? (
+                  relevanceResult.results.map((result) => (
+                    <div
+                      key={result.id}
+                      className="rounded-box border border-base-300 bg-base-100 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-primary">
+                          {result.id}
+                        </span>
+                        <span className="badge badge-accent badge-outline">
+                          {formatDistance(result.distance)}
+                        </span>
+                      </div>
+                      <p className="mt-3 whitespace-pre-wrap text-sm">
+                        {result.text || "No text returned for this hit."}
+                      </p>
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                        Metadata
+                      </p>
+                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs text-base-content/75">
+                        {formatMetadata(result.metadata)}
+                      </pre>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-box border border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                    No results were returned for this text.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="modal-action">
+            <button
+              className="btn btn-ghost"
+              onClick={closeRelevanceModal}
+              disabled={isCheckingRelevance}
+            >
+              {relevanceResult ? "Close" : "Cancel"}
+            </button>
+            <button
+              className="btn btn-accent"
+              onClick={handleRelevanceCheck}
+              disabled={isCheckingRelevance}
+            >
+              {isCheckingRelevance ? "Checking" : "Check Relevance"}
+            </button>
+          </div>
+        </div>
+        <button
+          className="modal-backdrop"
+          aria-label="Close relevance check modal"
+          onClick={closeRelevanceModal}
+        />
+      </div>
+    );
+  }
+
   function renderDocumentView() {
     return (
       <div className="rounded-box border border-base-300 bg-base-100 shadow-sm">
@@ -959,7 +1224,10 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-base-content/60">
+                  <td
+                    colSpan={6}
+                    className="py-10 text-center text-base-content/60"
+                  >
                     Upload a document to populate this table.
                   </td>
                 </tr>
@@ -981,7 +1249,8 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
               {traceSummary?.total_queries ?? 0}
             </div>
             <div className="stat-desc">
-              Last queried: {formatTimestamp(traceSummary?.last_queried_at ?? null)}
+              Last queried:{" "}
+              {formatTimestamp(traceSummary?.last_queried_at ?? null)}
             </div>
           </div>
           <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
@@ -1005,14 +1274,18 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
           <div className="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
             <div className="stat-title">Recent Traces</div>
             <div className="stat-value text-accent">{traceList.length}</div>
-            <div className="stat-desc">Latest retrieval events from the API.</div>
+            <div className="stat-desc">
+              Latest retrieval events from the API.
+            </div>
           </div>
         </div>
 
         <div className="rounded-box border border-base-300 bg-base-100 shadow-sm">
           <div className="flex items-center justify-between border-b border-base-300 px-6 py-5">
             <div>
-              <h2 className="text-2xl font-bold text-base-content">Trace View</h2>
+              <h2 className="text-2xl font-bold text-base-content">
+                Trace View
+              </h2>
               <p className="mt-1 text-sm text-base-content/65">
                 Recent retrieval traces captured by the backend query routes.
               </p>
@@ -1062,7 +1335,8 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                             top_k {trace.top_k}
                           </span>
                           <span className="badge badge-success badge-outline">
-                            {trace.hit_count} hit{trace.hit_count === 1 ? "" : "s"}
+                            {trace.hit_count} hit
+                            {trace.hit_count === 1 ? "" : "s"}
                           </span>
                         </div>
                         <p className="mt-3 line-clamp-2 font-mono text-sm text-base-content">
@@ -1099,7 +1373,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                         Filters
                       </p>
                       <pre className="mt-2 overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs text-base-content/75">
-                        {trace.where ? JSON.stringify(trace.where, null, 2) : "No filters"}
+                        {trace.where
+                          ? JSON.stringify(trace.where, null, 2)
+                          : "No filters"}
                       </pre>
                     </div>
 
@@ -1130,7 +1406,8 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                               Chunk Text
                             </p>
                             <p className="mt-2 whitespace-pre-wrap text-sm text-base-content/85">
-                              {trace.top_hit_texts[index] || "No chunk text stored."}
+                              {trace.top_hit_texts[index] ||
+                                "No chunk text stored."}
                             </p>
                             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/55">
                               Metadata
@@ -1158,7 +1435,9 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
                           </thead>
                           <tbody>
                             {trace.top_hit_ids.map((hitId, index) => (
-                              <tr key={`${trace.event_id}-summary-${hitId}-${index}`}>
+                              <tr
+                                key={`${trace.event_id}-summary-${hitId}-${index}`}
+                              >
                                 <td className="font-mono text-xs">{hitId}</td>
                                 <td>
                                   {formatDistance(
@@ -1232,20 +1511,11 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
             Upload
           </button>
           <button
-            className="btn btn-accent"
-            onClick={async () => {
-              try {
-                if (activeView === "traces") {
-                  await retrieveTraceViewData();
-                } else {
-                  await retrieveDocumentInfo();
-                }
-              } catch (error) {
-                console.error("Failed to refresh project dashboard.", error);
-              }
-            }}
+            className={`btn btn-accent ${canRetrieveDocuments ? "" : "btn-disabled"}`}
+            onClick={openRelevanceModal}
+            disabled={!canRetrieveDocuments}
           >
-            {activeView === "traces" ? "Refresh Traces" : "Refresh List"}
+            Check Relevance
           </button>
           <button
             className={`btn btn-error ${documentList.length > 0 ? "" : "btn-disabled"}`}
@@ -1267,6 +1537,7 @@ export default function DashboardPage({ params }: ProjectDashboardPageProps) {
       {renderDeleteModal()}
       {renderIngestModal()}
       {renderRetrieveModal()}
+      {renderRelevanceModal()}
       <ValidationModal
         base_url={API_BASE_URL}
         isOpen={validationModalOpen}

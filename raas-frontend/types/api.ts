@@ -65,6 +65,27 @@ export type QueryResponse = {
   retrieval_debug: Record<string, unknown>;
 };
 
+export type RelevanceHit = {
+  id: string;
+  text: string;
+  metadata: Record<string, unknown> | null;
+  distance: number;
+};
+
+export type RelevanceCheckResponse = {
+  ok: boolean;
+  project_id: string;
+  embedding_model: string;
+  distance_metric: string;
+  probe_format: string;
+  distance_threshold: number | null;
+  min_distance: number | null;
+  flagged: boolean;
+  hit_count: number;
+  latency_ms: number;
+  results: RelevanceHit[];
+};
+
 export type RetrievalTraceInfo = {
   event_id: string;
   project_id: string;
