@@ -38,6 +38,37 @@ class QueryOut(BaseModel):
     ok: bool = True
 
 
+class RelevanceCheckIn(BaseModel):
+    text: str = Field(..., min_length=1)
+    top_k: int = Field(3, ge=1, le=20)
+    distance_threshold: Optional[float] = None
+    where: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("where", "filters"),
+    )
+
+
+class RelevanceHitOut(BaseModel):
+    id: str
+    text: str
+    metadata: Optional[Dict[str, Any]] = None
+    distance: float
+
+
+class RelevanceCheckOut(BaseModel):
+    ok: bool = True
+    project_id: str
+    embedding_model: str
+    distance_metric: str
+    probe_format: str
+    distance_threshold: Optional[float]
+    min_distance: Optional[float]
+    flagged: bool = False
+    hit_count: int
+    latency_ms: int
+    results: List[RelevanceHitOut]
+
+
 class RetrievalTraceOut(BaseModel):
     event_id: str
     project_id: str
